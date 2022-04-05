@@ -10,7 +10,7 @@ interface IGBM {
     event Auction_Initialized(
         uint256 indexed _auctionID,
         uint256 indexed _tokenID,
-        uint256 indexed _tokenIndex,
+        uint256 indexed _tokenAmount,
         address _contractAddress,
         bytes4 _tokenKind
     );
@@ -42,47 +42,47 @@ interface IGBM {
     //        uint256 _highestBid
     //    ) external;
 
-    function batchClaim(uint256[] memory _auctionIds) external;
+    // function batchClaim(uint256[] memory _auctionIds) external;
 
-    function claim(uint256 _auctionId) external;
+    // function claim(uint256 _auctionId) external;
 
-    function erc20Currency() external view returns (address);
+    // function erc20Currency() external view returns (address);
 
-	//DEPRECATED
-    function getAuctionID(address _contract, uint256 _tokenID) external view returns (uint256); 
+	// //DEPRECATED
+    // function getAuctionID(address _contract, uint256 _tokenID) external view returns (uint256); 
 
-	//DEPRECATED
-    function getAuctionID(address _contract, uint256 _tokenID, uint256 _tokenIndex) external view returns (uint256);
+	// //DEPRECATED
+    // function getAuctionID(address _contract, uint256 _tokenID, uint256 _tokenIndex) external view returns (uint256);
 
-    function getTokenId(uint256 _auctionId) external view returns (uint256);
+    // function getTokenId(uint256 _auctionId) external view returns (uint256);
 
-    function getContractAddress(uint256 _auctionId) external view returns (address);
+    // function getContractAddress(uint256 _auctionId) external view returns (address);
 
-    function getTokenKind(uint256 _auctionId) external view returns (bytes4);
+    // function getTokenKind(uint256 _auctionId) external view returns (bytes4);
 
-    function getAuctionHighestBidder(uint256 _auctionId) external view returns (address);
+    // function getAuctionHighestBidder(uint256 _auctionId) external view returns (address);
 
-    function getAuctionHighestBid(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionHighestBid(uint256 _auctionId) external view returns (uint256);
 
-    function getAuctionDebt(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionDebt(uint256 _auctionId) external view returns (uint256);
 
-    function getAuctionDueIncentives(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionDueIncentives(uint256 _auctionId) external view returns (uint256);
 
-    function getAuctionStartTime(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionStartTime(uint256 _auctionId) external view returns (uint256);
 
-    function getAuctionEndTime(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionEndTime(uint256 _auctionId) external view returns (uint256);
 
-    function getAuctionHammerTimeDuration(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionHammerTimeDuration(uint256 _auctionId) external view returns (uint256);
 
-    function getAuctionBidDecimals(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionBidDecimals(uint256 _auctionId) external view returns (uint256);
 
-    function getAuctionStepMin(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionStepMin(uint256 _auctionId) external view returns (uint256);
 
-    function getAuctionIncMin(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionIncMin(uint256 _auctionId) external view returns (uint256);
 
-    function getAuctionIncMax(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionIncMax(uint256 _auctionId) external view returns (uint256);
 
-    function getAuctionBidMultiplier(uint256 _auctionId) external view returns (uint256);
+    // function getAuctionBidMultiplier(uint256 _auctionId) external view returns (uint256);
 	
-	function getAuctionID(address _contract, uint256 _tokenID, uint256 _tokenIndex, bytes4 _tokenKind) external view returns (uint256);
+	// function getAuctionID(address _contract, uint256 _tokenID, uint256 _tokenIndex, bytes4 _tokenKind) external view returns (uint256);
 }
