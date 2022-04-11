@@ -18,12 +18,16 @@ import {AppStorage} from "../libraries/AppStorage.sol";
 contract DiamondInit {
     AppStorage internal s;
 
-    function init(bytes memory backendPubKey) external {
-        // s.pixelcraft = contracts.pixelcraft;
-        // s.playerRewards = contracts.playerRewards;
-        // s.daoTreasury = contracts.daoTreasury;
-        // s.erc20Currency = contracts.erc20Currency;
-        // s.initiatorInfo = initInfo;
+    function init(
+        bytes memory backendPubKey,
+        address pixelcraft,
+        address GHST,
+        address GBM
+    ) external {
+        s.pixelcraft = pixelcraft;
+        s.GHST = GHST;
+        s.GBMAddress = GBM;
+
         s.backendPubKey = backendPubKey;
 
         // adding ERC165 data

@@ -30,7 +30,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     error NotTokenOwner();
     error StartOrEndTimeTooLow();
     error InsufficientToken();
-    error UnsupportedTokenType();
+    error TokenTypeMismatch();
     error UndefinedPreset();
     error NoAuction();
     error NotAuctionOwner();
@@ -43,10 +43,15 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     error NoZeroBidAmount();
     error UnmatchedHighestBid(uint256 currentHighestBid);
     error HigherBidAmount(uint256 currentHighestBid);
-    error NotHighestBidder();
+    error NotHighestBidderOrOwner();
     error MinBidNotMet();
+    error EndTimeTooLow();
+
+    //for debugging
     //   error AlreadyDefinedPreset();
     event TokenIndex(uint256 index);
+    event log_uint(address a);
+    event log_uintt(uint256 a);
 
     /// @notice Place a GBM bid for a GBM auction
     /// @param _auctionID The auction you want to bid on
@@ -82,13 +87,14 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (a.biddingAllowed == false) revert BiddingNotAllowed();
 
         if (_bidAmount < 1) revert NoZeroBidAmount();
-
+        //short-circuit
         if (_highestBid != a.highestBid) revert UnmatchedHighestBid(a.highestBid);
 
-        if (_bidAmount <= _highestBid) revert HigherBidAmount(_highestBid);
+        //  if (_bidAmount <= _highestBid) revert HigherBidAmount(_highestBid);
 
-        if ((_highestBid * (getAuctionBidDecimals(_auctionID) + getAuctionStepMin(_auctionID))) >= (_bidAmount * getAuctionBidDecimals(_auctionID)))
-            revert MinBidNotMet();
+        uint256 tmp = _highestBid * (getAuctionBidDecimals(_auctionID));
+
+        if ((tmp + getAuctionStepMin(_auctionID)) >= (_bidAmount * getAuctionBidDecimals(_auctionID))) revert MinBidNotMet();
 
         //Transfer the money of the bidder to the GBM Diamond
         IERC20(s.GHST).transferFrom(msg.sender, address(this), _bidAmount);
@@ -153,7 +159,8 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             revert AuctionNotEnded(a.info.endTime + getAuctionHammerTimeDuration(_auctionID));
         if (a.claimed == true) revert AuctionClaimed();
         //only owner should caim
-        if (msg.sender != a.highestBidder) revert NotHighestBidder();
+        emit log_uint(msg.sender);
+        require(msg.sender == a.highestBidder || msg.sender == a.owner, "NotHighestBidderOrOwner");
         address ca = s.secondaryMarketTokenContract[a.contractID];
         uint256 tid = a.info.tokenID;
         uint256 tam = a.info.tokenAmount;
@@ -187,6 +194,17 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         IERC20(s.GHST).transfer(s.playerRewards, playerRewardsShare);
         IERC20(s.GHST).transfer(s.daoTreasury, daoShare);
 */
+        //80% goes to auction owner
+        uint256 ownerShare = (_proceeds * 80) / 100;
+        IERC20(s.GHST).transfer(a.owner, ownerShare);
+
+        //10% goes to pixelcraft
+        uint256 pixelcraftShare = (_proceeds * 10) / 100;
+        IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
+        //10% goes to GBM
+        uint256 GBM = (_proceeds * 10) / 100;
+        IERC20(s.GHST).transfer(s.GBMAddress, GBM);
+
         //todo: test
         //not feasible for secondary/user-created auctions
         // if (s.auctions[_auctionID].highestBid == 0) {
@@ -194,13 +212,14 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         // }
         if (a.info.tokenKind == ERC721) {
             _sendTokens(ca, a.highestBidder, ERC721, tid, 1);
+            s.erc721AuctionExists[ca][tid] = false;
         }
         if (a.info.tokenKind == ERC1155) {
             _sendTokens(ca, a.highestBidder, ERC1155, tid, tam);
             //update storage
             s.erc1155AuctionIndexes[ca][tid][tam]--;
         }
-
+        a.biddingAllowed = false;
         emit Auction_ItemClaimed(_auctionID);
     }
 
@@ -219,35 +238,34 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
     function createAuction(
         InitiatorInfo calldata _info,
-        bytes4 _tokenKind,
         uint160 _contractID,
         uint256 _auctionPresetID
-    ) external {
+    ) external returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert UndefinedPreset();
         uint256 id = _info.tokenID;
         uint256 amount = _info.tokenAmount;
         address ca = s.secondaryMarketTokenContract[_contractID];
+        bytes4 tokenKind = _info.tokenKind;
         uint256 _aid;
         if (ca == address(0)) revert NoSecondaryMarket();
         _validateInitialAuction(_info);
-        if (_tokenKind == ERC721) {
+        if (tokenKind == ERC721) {
             if (s.erc721AuctionExists[ca][id] != false) revert AuctionExists();
-            if (msg.sender != Ownable(ca).owner()) revert NotTokenOwner();
+            if (Ownable(ca).ownerOf(id) == address(0) || msg.sender != Ownable(ca).ownerOf(id)) revert NotTokenOwner();
             //transfer Token
             IERC721(ca).safeTransferFrom(msg.sender, address(this), id);
             //register onchain after successfull transfer
-            _aid = uint256(keccak256(abi.encodePacked(ca, id, _tokenKind, block.number, amount)));
+            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.number, amount)));
             amount = 1;
+            s.erc721AuctionExists[ca][id] = true;
         }
-        if (_tokenKind == ERC1155) {
+        if (tokenKind == ERC1155) {
             uint256 index = s.erc1155AuctionIndexes[ca][id][amount];
-            if (IERC721(ca).balanceOf(msg.sender) < amount) revert InsufficientToken();
+            if (IERC1155(ca).balanceOf(msg.sender, id) < amount) revert InsufficientToken();
             //transfer Token
             IERC1155(ca).safeTransferFrom(msg.sender, address(this), id, amount, "");
-            index++;
-            _aid = uint256(keccak256(abi.encodePacked(ca, id, _tokenKind, block.number, index)));
-        } else {
-            revert UnsupportedTokenType();
+            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.number, index, amount)));
+            s.erc1155AuctionIndexes[ca][id][amount]++;
         }
 
         //set initiator info and set bidding allowed
@@ -255,9 +273,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         a.owner = msg.sender;
         a.contractID = _contractID;
         a.info = _info;
+        a.presets = s.auctionPresets[_auctionPresetID];
         a.biddingAllowed = true;
-        emit Auction_Initialized(_aid, id, amount, ca, _tokenKind);
+        emit Auction_Initialized(_aid, id, amount, ca, tokenKind);
         emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid));
+        return _aid;
     }
 
     function modifyAuction(
@@ -273,13 +293,15 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (a.owner != msg.sender) revert NotAuctionOwner();
         if (a.info.endTime < block.timestamp) revert AuctionEnded();
         if (a.claimed == true) revert AuctionClaimed();
-
+        if (a.info.tokenKind != _tokenKind) revert TokenTypeMismatch();
         uint256 tid = a.info.tokenID;
         address ca = s.secondaryMarketTokenContract[a.contractID];
         //verify that no bids have been entered yet
         if (a.highestBid > 0) revert ModifyAuctionError();
 
         if (_tokenKind == ERC721) {
+            //TODO: set a time bracket frame
+            if (block.timestamp >= _newEndTime || a.info.startTime >= _newEndTime) revert EndTimeTooLow();
             a.info.endTime = _newEndTime;
             emit Auction_Initialized(_auctionID, tid, 1, ca, _tokenKind);
         }
@@ -295,6 +317,8 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
                 IERC1155(ca).safeTransferFrom(msg.sender, address(this), a.info.tokenID, diff, "");
                 // update storage
                 a.info.tokenAmount = _newTokenAmount;
+                s.erc1155AuctionIndexes[ca][tid][currentAmount]--;
+                s.erc1155AuctionIndexes[ca][tid][_newTokenAmount]++;
             }
             if (currentAmount > _newTokenAmount) {
                 diff = currentAmount - _newTokenAmount;
@@ -309,10 +333,10 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
     }
 
-    function _validateInitialAuction(InitiatorInfo memory _info) internal {
+    function _validateInitialAuction(InitiatorInfo memory _info) internal view {
         //TODO: Add a minimum time for auction lifetime
         //TODO: Add extra checks for incMin and incMax(min and max values)
-        if (_info.startTime <= block.timestamp || _info.startTime <= _info.endTime) revert StartOrEndTimeTooLow();
+        if (_info.startTime < block.timestamp || _info.startTime >= _info.endTime) revert StartOrEndTimeTooLow();
     }
 
     function _sendTokens(
@@ -499,5 +523,18 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
 
         return (_newBidValue * decimaledRatio) / (bidDecimals * bidDecimals);
+    }
+
+    //mock calls
+    function checkPubKey() public view returns (bytes memory) {
+        return s.backendPubKey;
+    }
+
+    function checkIndex(
+        address _contract,
+        uint256 id,
+        uint256 amount
+    ) public view returns (uint256) {
+        return s.erc1155AuctionIndexes[_contract][id][amount];
     }
 }

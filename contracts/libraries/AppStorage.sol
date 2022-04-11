@@ -12,8 +12,8 @@ import {LibDiamond} from "./LibDiamond.sol";
 
 // struct ContractAddresses {
 //     address pixelcraft;
-//     address daoTreasury;
-//     // address erc20Currency;
+//     address GBMAddress;
+//     address GHST;
 // }
 bytes4 constant ERC721 = 0x73ad2146;
 bytes4 constant ERC1155 = 0x973bb640;
@@ -60,8 +60,8 @@ struct Auction {
 
 struct AppStorage {
     address pixelcraft;
-    address daoTreasury;
-    address GBMAddrress;
+    //address daoTreasury;
+    address GBMAddress;
     address GHST;
     mapping(address => bool) biddingAllowed;
     // mapping(uint256 => TokenRepresentation) tokenMapping; //_auctionId => token_primaryKey

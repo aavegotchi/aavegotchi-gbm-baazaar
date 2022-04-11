@@ -2,5 +2,5 @@
 pragma solidity ^0.8.0;
 
 interface Ownable {
-    function owner() external returns(address); 
+    function ownerOf(uint256 _tokenId) external returns (address);
 }
