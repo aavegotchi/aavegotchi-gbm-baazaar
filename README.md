@@ -4,7 +4,7 @@ Working repo for the GBM Baazar auction contract
 
 # All tests are written in solidity, to run
 
-- Install foundry using forgeup
+- Install foundry using foundryup
   Run
   ```bash
   forge test
