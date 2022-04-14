@@ -37,10 +37,9 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
     address bidder3 = 0x9e2f52990b1D802cD6F277ed116b2c76a765C2AF;
 
     uint256 bidder2priv = 0x18329f54ac729d4765e74e32b1bf7a5ced7a2c0136a03ce18ed1590d43f39890;
-    uint256 bidder3priv = 0xfaedc9c13106acbf9eaa0ff0f9ed88fc7e738f52f88a8608440a1457f98e0b6c;
-    uint8 v;
-    bytes32 r;
-    bytes32 s;
+    // uint8 v;
+    // bytes32 r;
+    // bytes32 s;
 
     ////FACET DATA
     // FacetCut[] cut;
@@ -85,6 +84,10 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         "18db6dd94c8b8eeeeadbd0f7b4a0050135f086e0ba16f915773652d10e39e409a60a59adc13c2747f8fc4e405a08327849f51a2ed7073eb19f0a815c73dbd399";
 
     function setUp() public {
+        cheat.label(0x07AdeA2EdC30d04f46448E3159aD7aAF0222dB13, "BIDDER2");
+        cheat.label(0x9e2f52990b1D802cD6F277ed116b2c76a765C2AF, "BIDDER3");
+        cheat.label(address(this), "AUCTIONCREATOR");
+
         //deploy diamondCut
         dcut = new DiamondCutFacet();
         //deploy diamond
@@ -160,8 +163,8 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
             0
         );
 
-        //mint an erc721 token
-        erc721.mint(1);
+        //mint two erc721 tokens
+        erc721.mint(2);
         cheat.expectRevert("transferFromInternal: msg.sender is not allowed to manipulate the token");
 
         GBMFacet(address(diamond)).createAuction(
@@ -325,6 +328,83 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         GBMFacet(address(diamond)).claim(erc721Auction);
     }
 
+    function testAuctionCancellation() public {
+        //initialize a new auction for erc721
+        uint256 erc721Auction2 = GBMFacet(address(diamond)).createAuction(
+            InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(1), bytes4(ERC721), 2),
+            10,
+            0
+        );
+
+        erc20.approve(address(diamond), 10000000e18);
+        //can't cancel when auction hasn't ended
+        cheat.expectRevert(abi.encodeWithSelector(GBMFacet.AuctionNotEnded.selector, GBMFacet(address(diamond)).getAuctionEndTime(erc721Auction2)));
+        GBMFacet(address(diamond)).cancelAuction(erc721Auction2);
+        //jump to a time between endTime and hammer time
+        cheat.warp(block.timestamp + 3 days + 100);
+        //successfully cancel auction
+        GBMFacet(address(diamond)).cancelAuction(erc721Auction2);
+        assertEq(erc721.ownerOf(2), address(this));
+        //verify auction cancellation by opening another auction with same params
+        erc721Auction2 = GBMFacet(address(diamond)).createAuction(
+            InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(1), bytes4(ERC721), 2),
+            10,
+            0
+        );
+
+        //initialize a new auction for erc1155
+        erc1155Auction2 = GBMFacet(address(diamond)).createAuction(
+            InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(1), bytes4(ERC1155), 0),
+            11,
+            0
+        );
+        //bidder2 bids 100
+        bytes memory sig = constructSig(bidder2, erc721Auction2, 100e18, 0, bidder2priv);
+        cheat.startPrank(bidder2);
+        erc20.approve(address(diamond), 100000e18);
+        GBMFacet(address(diamond)).commitBid(erc721Auction2, 100e18, 0, sig);
+        cheat.stopPrank();
+        //outbid by bidder 3
+        sig = constructSig(bidder3, erc721Auction2, 150e18, 100e18, bidder2priv);
+        cheat.startPrank(bidder3);
+        erc20.approve(address(diamond), 100000e18);
+        GBMFacet(address(diamond)).commitBid(erc721Auction2, 150e18, 100e18, sig);
+
+        //FOR ERC1155
+        //bidder2 bids 100ghst
+        cheat.stopPrank();
+        sig = constructSig(bidder2, erc1155Auction2, 100e18, 0, bidder2priv);
+        cheat.startPrank(bidder2);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction2, 100e18, 0, sig);
+        cheat.stopPrank();
+        //outbid by bidder 3
+        sig = constructSig(bidder3, erc1155Auction2, 150e18, 100e18, bidder2priv);
+        cheat.startPrank(bidder3);
+
+        GBMFacet(address(diamond)).commitBid(erc1155Auction2, 150e18, 100e18, sig);
+
+        cheat.stopPrank();
+
+        //jump to a time between endTime and hammer time
+        cheat.warp(block.timestamp + 3 days + 100);
+
+        cheat.stopPrank();
+        GBMFacet(address(diamond)).cancelAuction(erc721Auction2);
+        cheat.prank(bidder3);
+        cheat.expectRevert(GBMFacet.AuctionClaimed.selector);
+        GBMFacet(address(diamond)).claim(erc721Auction2);
+
+        //test for erc1155 auction cancellations too
+
+        GBMFacet(address(diamond)).cancelAuction(erc1155Auction2);
+        cheat.prank(bidder3);
+        cheat.expectRevert(GBMFacet.AuctionClaimed.selector);
+        GBMFacet(address(diamond)).claim(erc1155Auction2);
+
+        //confirm that index decreases
+        assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 1), 0);
+    }
+
     function diamondCut(
         FacetCut[] calldata _diamondCut,
         address _init,
@@ -339,5 +419,14 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         bytes calldata /* _data */
     ) external pure returns (bytes4) {
         return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
+    }
+
+    function onERC721Received(
+        address, /* _operator */
+        address, /*  _from */
+        uint256, /*  _tokenId */
+        bytes calldata /* _data */
+    ) external pure returns (bytes4) {
+        return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 }

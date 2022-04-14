@@ -7,7 +7,7 @@ Working repo for the GBM Baazar auction contract
 - Install foundry using foundryup
   Run
   ```bash
-  forge test
+  forge update && forge test
   ```
 
 ## constants

@@ -155,10 +155,10 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     function claim(uint256 _auctionID) public {
         Auction storage a = s.auctions[_auctionID];
         if (a.owner == address(0)) revert NoAuction();
+        if (a.claimed == true) revert AuctionClaimed();
         if (a.info.endTime + getAuctionHammerTimeDuration(_auctionID) > block.timestamp)
             revert AuctionNotEnded(a.info.endTime + getAuctionHammerTimeDuration(_auctionID));
-        if (a.claimed == true) revert AuctionClaimed();
-        //only owner should caim
+        //only owner or highestBidder should caim
         emit log_uint(msg.sender);
         require(msg.sender == a.highestBidder || msg.sender == a.owner, "NotHighestBidderOrOwner");
         address ca = s.secondaryMarketTokenContract[a.contractID];
@@ -217,7 +217,9 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (a.info.tokenKind == ERC1155) {
             _sendTokens(ca, a.highestBidder, ERC1155, tid, tam);
             //update storage
-            s.erc1155AuctionIndexes[ca][tid][tam]--;
+            unchecked {
+                s.erc1155AuctionIndexes[ca][tid][tam]--;
+            }
         }
         a.biddingAllowed = false;
         emit Auction_ItemClaimed(_auctionID);
@@ -265,7 +267,9 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             //transfer Token
             IERC1155(ca).safeTransferFrom(msg.sender, address(this), id, amount, "");
             _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.number, index, amount)));
-            s.erc1155AuctionIndexes[ca][id][amount]++;
+            unchecked {
+                s.erc1155AuctionIndexes[ca][id][amount]++;
+            }
         }
 
         //set initiator info and set bidding allowed
@@ -275,6 +279,8 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         a.info = _info;
         a.presets = s.auctionPresets[_auctionPresetID];
         a.biddingAllowed = true;
+        //for recurring auction creations
+        a.claimed = false;
         emit Auction_Initialized(_aid, id, amount, ca, tokenKind);
         emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid));
         return _aid;
@@ -317,8 +323,10 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
                 IERC1155(ca).safeTransferFrom(msg.sender, address(this), a.info.tokenID, diff, "");
                 // update storage
                 a.info.tokenAmount = _newTokenAmount;
-                s.erc1155AuctionIndexes[ca][tid][currentAmount]--;
-                s.erc1155AuctionIndexes[ca][tid][_newTokenAmount]++;
+                unchecked {
+                    s.erc1155AuctionIndexes[ca][tid][currentAmount]--;
+                    s.erc1155AuctionIndexes[ca][tid][_newTokenAmount]++;
+                }
             }
             if (currentAmount > _newTokenAmount) {
                 diff = currentAmount - _newTokenAmount;
@@ -326,8 +334,10 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
                 _sendTokens(ca, msg.sender, _tokenKind, tid, diff);
                 //update storage
                 a.info.tokenAmount = _newTokenAmount;
-                s.erc1155AuctionIndexes[ca][tid][currentAmount]--;
-                s.erc1155AuctionIndexes[ca][tid][_newTokenAmount]++;
+                unchecked {
+                    s.erc1155AuctionIndexes[ca][tid][currentAmount]--;
+                    s.erc1155AuctionIndexes[ca][tid][_newTokenAmount]++;
+                }
             }
             emit Auction_Initialized(_auctionID, tid, _newTokenAmount, ca, _tokenKind);
         }
@@ -372,28 +382,50 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 tam = a.info.tokenAmount;
         if (getAuctionEndTime(_auctionID) + getAuctionHammerTimeDuration(_auctionID) < block.timestamp) revert CancellationTimeExceeded();
         a.claimed = true;
-        //TODO:compare cases where no bids have been made
-        uint256 _proceeds = a.highestBid - a.auctionDebt;
-
-        //Send the debt + his due incentives from the seller to the highest bidder
-        IERC20(s.GHST).transferFrom(a.owner, a.highestBidder, a.dueIncentives + a.auctionDebt);
-
-        //INSERT ANY EXTRA FEE HERE
-
-        //Refund it's bid minus debt to the highest bidder
-        IERC20(s.GHST).transferFrom(address(this), a.highestBidder, _proceeds);
-
-        // Transfer the token to the owner/canceller
-        if (a.info.tokenKind == ERC721) {
-            _sendTokens(ca, a.owner, ERC721, tid, 1);
+        // case where no bids have been made
+        if (a.highestBid == 0) {
+            // Transfer the token to the owner/canceller
+            if (a.info.tokenKind == ERC721) {
+                _sendTokens(ca, a.owner, ERC721, tid, 1);
+                //update storage
+                s.erc721AuctionExists[ca][tid] = false;
+            }
+            if (a.info.tokenKind == ERC1155) {
+                _sendTokens(ca, a.owner, ERC1155, tid, tam);
+                //update storage
+                unchecked {
+                    s.erc1155AuctionIndexes[ca][tid][tam]--;
+                }
+            }
+            emit AuctionCancelled(_auctionID, tid);
         }
-        if (a.info.tokenKind == ERC1155) {
-            _sendTokens(ca, a.owner, ERC1155, tid, tam);
-            //update storage
-            s.erc1155AuctionIndexes[ca][tid][tam]--;
-        }
+        if (a.highestBid > 0) {
+            uint256 _proceeds = a.highestBid - a.auctionDebt;
 
-        emit AuctionCancelled(_auctionID, tid);
+            //Send the debt + his due incentives from the seller to the highest bidder
+            IERC20(s.GHST).transferFrom(a.owner, a.highestBidder, a.dueIncentives + a.auctionDebt);
+
+            //INSERT ANY EXTRA FEE HERE
+
+            //Refund it's bid minus debt to the highest bidder
+            IERC20(s.GHST).transferFrom(address(this), a.highestBidder, _proceeds);
+
+            // Transfer the token to the owner/canceller
+            if (a.info.tokenKind == ERC721) {
+                _sendTokens(ca, a.owner, ERC721, tid, 1);
+                //update storage
+                s.erc721AuctionExists[ca][tid] = false;
+            }
+            if (a.info.tokenKind == ERC1155) {
+                _sendTokens(ca, a.owner, ERC1155, tid, tam);
+                //update storage
+                unchecked {
+                    s.erc1155AuctionIndexes[ca][tid][tam]--;
+                }
+            }
+
+            emit AuctionCancelled(_auctionID, tid);
+        }
     }
 
     /// @notice Register parameters of auction to be used as presets
