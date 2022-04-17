@@ -23,9 +23,9 @@ let startTime = Math.floor(Date.now() / 1000);
 let endTime = Math.floor(Date.now() / 1000) + 86400;
 let hammerTimeDuration = 300;
 let bidDecimals = 100000;
-let stepMin = 10000;
-let incMax = 10000;
-let incMin = 1000;
-let bidMultiplier = 11120;
+let stepMin = 15000;
+let incMax = 15000;
+let incMin = 1500;
+let bidMultiplier = 18270;
 
 ```

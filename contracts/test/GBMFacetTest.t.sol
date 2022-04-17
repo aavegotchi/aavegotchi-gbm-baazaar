@@ -137,7 +137,8 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         );
 
         //set a preset
-        GBMFacet(address(diamond)).setAuctionPresets(0, Preset(1000, 10000, 11120, 10000, 100000, 300));
+        //using highest preset
+        GBMFacet(address(diamond)).setAuctionPresets(0, Preset(1500, 15000, 18270, 15000, 100000, 300));
         cheat.expectRevert(GBMFacet.NoSecondaryMarket.selector);
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 1 days, uint64(1), bytes4(ERC721), 1),

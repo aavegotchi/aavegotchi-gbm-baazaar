@@ -64,25 +64,11 @@ struct AppStorage {
     address GBMAddress;
     address GHST;
     mapping(address => bool) biddingAllowed;
-    // mapping(uint256 => TokenRepresentation) tokenMapping; //_auctionId => token_primaryKey
-    //DEPRECATED DUE TO DUAL TOKEN ID SAME CONTRACT
-    //mapping(address => mapping(uint256 => mapping(uint256 => uint256))) auctionMapping; // contractAddress => tokenId => TokenIndex => _auctionId
-    //var storing individual auction settings. if != null, they take priority over collection settings
     mapping(uint256 => Auction) auctions; //_auctionId => auctions
-    mapping(uint256 => bool) auctionItemClaimed;
-    // //var storing contract wide settings. Those are used if no auctionId specific parameters is initialized
-    // // mapping(address => Collection) collections; //tokencontract => collections
     mapping(address => mapping(uint256 => uint256)) erc1155TokensIndex; //Contract => TokenID => Amount being auctionned
-    //mapping(address => mapping(uint256 => uint256)) erc1155TokensUnderAuction; //Contract => TokenID => Amount being auctionned
     bytes backendPubKey;
-    //Secondary market patch
-    // mapping(address => mapping(uint256 => mapping(uint256 => uint256))) auction721Mapping; // contractAddress => tokenId => TokenIndex => _auctionId
-    // mapping(address => mapping(uint256 => mapping(uint256 => uint256))) auction1155Mapping; // contractAddress => tokenId => TokenIndex => _auctionId
     mapping(address => mapping(uint256 => bool)) erc721AuctionExists; //Contract => TokenID => Existence
-    //mapping(address => mapping(uint256 => mapping(uint256 => bool))) erc1155AuctionExists; //Contract=>TokenID=>Amount=>Existence
     mapping(address => mapping(uint256 => mapping(uint256 => uint256))) erc1155AuctionIndexes; //Contract=>TokenID=>Amount=>maxIndex;
-    //TODO:remove
-    // mapping(uint256 => address) auctionSeller; //auctionID => Auction seller Mapping storing who is the seller of a token for a specific auction.
     mapping(uint256 => Preset) auctionPresets; // presestID => Configuration parameters
     mapping(uint256 => address) secondaryMarketTokenContract; //tokenContractId => Token contract address
 }

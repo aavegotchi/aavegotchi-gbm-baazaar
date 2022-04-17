@@ -1,6 +1,9 @@
 /* global ethers hre */
 /* eslint prefer-const: "off" */
 
+import { BigNumberish } from "ethers";
+import { ethers } from "hardhat";
+
 //@ts-ignore
 // import hardhat, { run, ethers } from "hardhat";
 
@@ -12,6 +15,16 @@ const ghstAddress = "0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7";
 const pixelcraft = "0xD4151c984e6CF33E04FFAAF06c3374B2926Ecc64";
 const playerRewards = "0x27DF5C6dcd360f372e23d5e63645eC0072D0C098";
 const daoTreasury = "0xb208f8BB431f580CC4b216826AFfB128cd1431aB";
+const GBM = "";
+
+interface Preset {
+  incMin: BigNumberish;
+  incMax: BigNumberish;
+  bidMultiplier: BigNumberish;
+  stepMin: BigNumberish;
+  bidDecimals: BigNumberish;
+  hammerTimeDuration: BigNumberish;
+}
 
 //Medium Preset
 let startTime = Math.floor(Date.now() / 1000);
@@ -22,6 +35,33 @@ let stepMin = 10000;
 let incMax = 10000;
 let incMin = 1000;
 let bidMultiplier = 11120;
+
+const lowPreset: Preset = {
+  incMin: 500,
+  incMax: 1000,
+  bidMultiplier: 500,
+  stepMin: 10000,
+  bidDecimals: 1000,
+  hammerTimeDuration: 300,
+};
+
+const mediumPreset: Preset = {
+  incMin: 500,
+  incMax: 5000,
+  bidMultiplier: 4970,
+  stepMin: 5000,
+  bidDecimals: 100000,
+  hammerTimeDuration: 300,
+};
+
+const highPreset: Preset = {
+  incMin: 1000,
+  incMax: 10000,
+  bidMultiplier: 11000,
+  stepMin: 10000,
+  bidDecimals: 100000,
+  hammerTimeDuration: 300,
+};
 
 const gasPrice = 20000000000;
 
@@ -68,18 +108,13 @@ async function deployDiamond() {
   const diamondInit = await DiamondInit.deploy({ gasPrice: gasPrice });
   await diamondInit.deployed();
   console.log("DiamondInit deployed:", diamondInit.address);
-
+  //@ts-ignore
   const testing = ["hardhat", "localhost"].includes(hre.network.name);
 
   // deploy facets
   console.log("");
   console.log("Deploying facets");
-  const FacetNames = [
-    "DiamondLoupeFacet",
-    "OwnershipFacet",
-    "SettingsFacet",
-    "GBMFacet",
-  ];
+  const FacetNames = ["DiamondLoupeFacet", "OwnershipFacet", "GBMFacet"];
   const cut = [];
   for (const FacetName of FacetNames) {
     const Facet = await ethers.getContractFactory(FacetName);
@@ -102,9 +137,10 @@ async function deployDiamond() {
   let backendSigner = new ethers.Wallet(process.env.GBM_PK_PROD); // PK should start with '0x'
 
   let functionCall = diamondInit.interface.encodeFunctionData("init", [
-    contractAddresses,
-    initInfo,
     ethers.utils.hexDataSlice(backendSigner.publicKey, 1),
+    pixelcraft,
+    ghstAddress,
+    GBM,
   ]);
 
   console.log("key:", ethers.utils.hexDataSlice(backendSigner.publicKey, 1));
@@ -119,11 +155,11 @@ async function deployDiamond() {
   }
   console.log("Completed diamond cut");
 
-  //transfer ownership to itemManager
-  const ownershipFacet = await ethers.getContractAt(
-    "OwnershipFacet",
-    diamond.address
-  );
+  // //transfer ownership to itemManager
+  // const ownershipFacet = await ethers.getContractAt(
+  //   "OwnershipFacet",
+  //   diamond.address
+  // );
 
   /*  if (testing) {
     await ownershipFacet.transferOwnership(
@@ -132,14 +168,14 @@ async function deployDiamond() {
   } else {
     */
   //Transfer to itemManager
-  await ownershipFacet.transferOwnership(
-    "0x8D46fd7160940d89dA026D59B2e819208E714E82",
-    { gasPrice: gasPrice }
-  );
+  // await ownershipFacet.transferOwnership(
+  //   "0x8D46fd7160940d89dA026D59B2e819208E714E82",
+  //   { gasPrice: gasPrice }
+  // );
   //}
 
-  const currentOwner = await ownershipFacet.owner();
-  console.log("current owner:", currentOwner);
+  // const currentOwner = await ownershipFacet.owner();
+  // console.log("current owner:", currentOwner);
 
   return diamond.address;
 }
