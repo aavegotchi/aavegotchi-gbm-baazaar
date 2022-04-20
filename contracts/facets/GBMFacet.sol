@@ -42,10 +42,12 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     error BiddingNotAllowed();
     error NoZeroBidAmount();
     error UnmatchedHighestBid(uint256 currentHighestBid);
-    error HigherBidAmount(uint256 currentHighestBid);
     error NotHighestBidderOrOwner();
     error MinBidNotMet();
     error EndTimeTooLow();
+    error DurationTooLow();
+    error DurationTooHigh();
+    error InvalidAuctionParams(string arg);
 
     //for debugging
     //   error AlreadyDefinedPreset();
@@ -62,12 +64,15 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 _auctionID,
         uint256 _bidAmount,
         uint256 _highestBid,
+        uint256 _contractID,
+        uint256 _tokenID,
+        uint256 _amount,
         bytes memory _signature
     ) external {
         bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, _auctionID, _bidAmount, _highestBid));
         require(LibSignature.isValid(messageHash, _signature, s.backendPubKey), "bid: Invalid signature");
 
-        bid(_auctionID, _bidAmount, _highestBid);
+        bid(_auctionID, _contractID, _tokenID, _amount, _bidAmount, _highestBid);
     }
 
     /// @notice Place a GBM bid for a GBM auction
@@ -76,6 +81,9 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _highestBid The current higest bid. Throw if incorrect.
     function bid(
         uint256 _auctionID,
+        uint256 _contractID,
+        uint256 _tokenID,
+        uint256 _amount,
         uint256 _bidAmount,
         uint256 _highestBid
     ) internal {
@@ -89,6 +97,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (_bidAmount < 1) revert NoZeroBidAmount();
         //short-circuit
         if (_highestBid != a.highestBid) revert UnmatchedHighestBid(a.highestBid);
+
+        //Verify onchain Auction Params
+        if (a.contractID != _contractID) revert InvalidAuctionParams("contractID");
+        if (a.info.tokenID != _tokenID) revert InvalidAuctionParams("tokenID");
+        if (a.info.tokenAmount != _amount) revert InvalidAuctionParams("amount");
 
         //  if (_bidAmount <= _highestBid) revert HigherBidAmount(_highestBid);
 
@@ -205,11 +218,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 GBM = (_proceeds * 10) / 100;
         IERC20(s.GHST).transfer(s.GBMAddress, GBM);
 
-        //todo: test
-        //not feasible for secondary/user-created auctions
-        // if (s.auctions[_auctionID].highestBid == 0) {
-        //     s.auctions[_auctionID].highestBidder = LibDiamond.contractOwner();
-        // }
         if (a.info.tokenKind == ERC721) {
             _sendTokens(ca, a.highestBidder, ERC721, tid, 1);
             s.erc721AuctionExists[ca][tid] = false;
@@ -345,8 +353,10 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
     function _validateInitialAuction(InitiatorInfo memory _info) internal view {
         //TODO: Add a minimum time for auction lifetime
-        //TODO: Add extra checks for incMin and incMax(min and max values)
         if (_info.startTime < block.timestamp || _info.startTime >= _info.endTime) revert StartOrEndTimeTooLow();
+        uint256 duration = _info.endTime - _info.startTime;
+        if (duration < 3600) revert DurationTooLow();
+        if (duration > 604800) revert DurationTooHigh();
     }
 
     function _sendTokens(
@@ -405,10 +415,18 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             //Send the debt + his due incentives from the seller to the highest bidder
             IERC20(s.GHST).transferFrom(a.owner, a.highestBidder, a.dueIncentives + a.auctionDebt);
 
-            //INSERT ANY EXTRA FEE HERE
+            //80% goes to owner
+            uint256 ownerShare = (_proceeds * 80) / 100;
+
+            //10% goes to pixelcraft
+            uint256 pixelcraftShare = (_proceeds * 10) / 100;
+            IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
+            //10% goes to GBM
+            uint256 GBM = (_proceeds * 10) / 100;
+            IERC20(s.GHST).transfer(s.GBMAddress, GBM);
 
             //Refund it's bid minus debt to the highest bidder
-            IERC20(s.GHST).transferFrom(address(this), a.highestBidder, _proceeds);
+            IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
 
             // Transfer the token to the owner/canceller
             if (a.info.tokenKind == ERC721) {

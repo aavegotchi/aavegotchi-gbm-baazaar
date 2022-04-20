@@ -21,7 +21,7 @@ const \_daoTreasury = "0xb208f8BB431f580CC4b216826AFfB128cd1431aB";
 
 let startTime = Math.floor(Date.now() / 1000);
 let endTime = Math.floor(Date.now() / 1000) + 86400;
-let hammerTimeDuration = 300;
+let hammerTimeDuration = 1200;
 let bidDecimals = 100000;
 let stepMin = 15000;
 let incMax = 15000;
