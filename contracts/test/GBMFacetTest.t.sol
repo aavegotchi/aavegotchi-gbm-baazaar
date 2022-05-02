@@ -75,7 +75,8 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         0x10e77df8,
         0x50d265d4,
         0x199da6b4,
-        0x66ab9575
+        0x66ab9575,
+        0x4f6f108a
     ];
 
     bytes4[] OWNERSHIP_SELECTORS = [bytes4(0xf2fde38b), 0x8da5cb5b];
@@ -224,6 +225,12 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
             0
         );
         assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 3), 2);
+
+        //allow bidding for token contracts
+        GBMFacet(address(diamond)).setBiddingAllowed(address(erc721), true);
+        GBMFacet(address(diamond)).setBiddingAllowed(address(erc1155), true);
+
+        assertTrue(GBMFacet(address(diamond)).isBiddingAllowed(address(erc1155)));
     }
 
     function testAuctionModification() public {

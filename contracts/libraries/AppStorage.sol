@@ -63,7 +63,7 @@ struct AppStorage {
     //address daoTreasury;
     address GBMAddress;
     address GHST;
-    mapping(address => bool) biddingAllowed;
+    mapping(address => bool) contractBiddingAllowed;
     mapping(uint256 => Auction) auctions; //_auctionId => auctions
     mapping(address => mapping(uint256 => uint256)) erc1155TokensIndex; //Contract => TokenID => Amount being auctionned
     bytes backendPubKey;

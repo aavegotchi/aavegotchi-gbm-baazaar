@@ -48,6 +48,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     error DurationTooLow();
     error DurationTooHigh();
     error InvalidAuctionParams(string arg);
+    error ContractDisabledAlready();
 
     //for debugging
     //   error AlreadyDefinedPreset();
@@ -93,7 +94,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (a.info.endTime < block.timestamp) revert AuctionEnded();
         if (a.claimed == true) revert AuctionClaimed();
         if (a.biddingAllowed == false) revert BiddingNotAllowed();
-
         if (_bidAmount < 1) revert NoZeroBidAmount();
         //short-circuit
         if (_highestBid != a.highestBid) revert UnmatchedHighestBid(a.highestBid);
@@ -104,6 +104,9 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (a.info.tokenAmount != _amount) revert InvalidAuctionParams("amount");
 
         //  if (_bidAmount <= _highestBid) revert HigherBidAmount(_highestBid);
+
+        address tokenContract = s.secondaryMarketTokenContract[_contractID];
+        if (s.contractBiddingAllowed[tokenContract] == false) revert BiddingNotAllowed();
 
         uint256 tmp = _highestBid * (getAuctionBidDecimals(_auctionID));
 
@@ -237,13 +240,18 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _contract The token contract the auctionned token belong to
     /// @param _value True if bidding/claiming should be allowed.
     function setBiddingAllowed(address _contract, bool _value) external onlyOwner {
-        s.biddingAllowed[_contract] = _value;
+        s.contractBiddingAllowed[_contract] = _value;
         emit Contract_BiddingAllowed(_contract, _value);
     }
 
     function enableContract(uint256 _contractID, address _tokenContract) external onlyOwner {
         if (s.secondaryMarketTokenContract[_contractID] != address(0)) revert ContractEnabledAlready();
         s.secondaryMarketTokenContract[_contractID] = _tokenContract;
+    }
+
+    function disableContract(uint256 _contractID) external onlyOwner {
+        if (s.secondaryMarketTokenContract[_contractID] == address(0)) revert ContractDisabledAlready();
+        s.secondaryMarketTokenContract[_contractID] = address(0);
     }
 
     function createAuction(
@@ -257,6 +265,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         address ca = s.secondaryMarketTokenContract[_contractID];
         bytes4 tokenKind = _info.tokenKind;
         uint256 _aid;
+        assert(tokenKind == ERC721 || tokenKind == ERC1155);
         if (ca == address(0)) revert NoSecondaryMarket();
         _validateInitialAuction(_info);
         if (tokenKind == ERC721) {
@@ -518,6 +527,10 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
     function getAuctionBidMultiplier(uint256 _auctionID) public view returns (uint256) {
         return s.auctions[_auctionID].presets.bidMultiplier;
+    }
+
+    function isBiddingAllowed(address _contract) public view returns (bool) {
+        return s.contractBiddingAllowed[_contract];
     }
 
     function onERC721Received(
