@@ -420,12 +420,15 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
         if (a.highestBid > 0) {
             uint256 _proceeds = a.highestBid - a.auctionDebt;
+            //Fees of pixelcraft and GBM
+            uint256 _auctionFees = (_proceeds * 20) / 100;
 
             //Send the debt + his due incentives from the seller to the highest bidder
-            IERC20(s.GHST).transferFrom(a.owner, a.highestBidder, a.dueIncentives + a.auctionDebt);
+            IERC20(s.GHST).transferFrom(a.owner, address(this), _auctionFees + a.dueIncentives + a.auctionDebt);
 
-            //80% goes to owner
-            uint256 ownerShare = (_proceeds * 80) / 100;
+            //Refund it's bid plus his incentives to the highest bidder
+            uint256 ownerShare = _proceeds + a.auctionDebt + a.dueIncentives;
+            IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
 
             //10% goes to pixelcraft
             uint256 pixelcraftShare = (_proceeds * 10) / 100;
@@ -433,9 +436,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             //10% goes to GBM
             uint256 GBM = (_proceeds * 10) / 100;
             IERC20(s.GHST).transfer(s.GBMAddress, GBM);
-
-            //Refund it's bid minus debt to the highest bidder
-            IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
 
             // Transfer the token to the owner/canceller
             if (a.info.tokenKind == ERC721) {

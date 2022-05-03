@@ -89,6 +89,8 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         cheat.label(0x07AdeA2EdC30d04f46448E3159aD7aAF0222dB13, "BIDDER2");
         cheat.label(0x9e2f52990b1D802cD6F277ed116b2c76a765C2AF, "BIDDER3");
         cheat.label(address(this), "AUCTIONCREATOR");
+        cheat.label(0x27DF5C6dcd360f372e23d5e63645eC0072D0C098, "GBMADDRESS");
+        cheat.label(0xD4151c984e6CF33E04FFAAF06c3374B2926Ecc64, "PIXELCARFT");
 
         //deploy diamondCut
         dcut = new DiamondCutFacet();
