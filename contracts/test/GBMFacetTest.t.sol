@@ -260,6 +260,10 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         cheat.expectRevert(GBMFacet.EndTimeTooLow.selector);
         GBMFacet(address(diamond)).modifyAuction(erc721Auction, uint80(block.timestamp), 0, ERC721);
 
+        cheat.expectRevert(GBMFacet.DurationTooHigh.selector);
+        //try to change auction duration to > 7 days
+        GBMFacet(address(diamond)).modifyAuction(erc721Auction, uint80(block.timestamp + 8 days), 0, ERC721);
+
         //change the expiry time
         GBMFacet(address(diamond)).modifyAuction(erc721Auction, uint80(block.timestamp + 4 days), 0, ERC721);
         uint256 endTime = GBMFacet(address(diamond)).getAuctionEndTime(erc721Auction);

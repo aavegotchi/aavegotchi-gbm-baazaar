@@ -321,10 +321,14 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         address ca = s.secondaryMarketTokenContract[a.contractID];
         //verify that no bids have been entered yet
         if (a.highestBid > 0) revert ModifyAuctionError();
-
-        if (_tokenKind == ERC721) {
-            //TODO: set a time bracket frame
+        //If the end time is being changed
+        if (a.info.endTime != _newEndTime) {
             if (block.timestamp >= _newEndTime || a.info.startTime >= _newEndTime) revert EndTimeTooLow();
+            uint256 duration = _newEndTime - a.info.startTime;
+            //max time should not be grater than 7 days
+            if (duration > 604800) revert DurationTooHigh();
+        }
+        if (_tokenKind == ERC721) {
             a.info.endTime = _newEndTime;
             emit Auction_Initialized(_auctionID, tid, 1, ca, _tokenKind);
         }
