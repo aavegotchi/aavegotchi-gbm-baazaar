@@ -33,6 +33,7 @@ module.exports = {
     hardhat: {
       forking: {
         url: process.env.MATIC_URL,
+        accounts: [process.env.SECRET],
         // timeout: 1200000,
         // blockNumber: 26200790,
         // blockNumber: 13024371
@@ -60,6 +61,15 @@ module.exports = {
       // blockGasLimit: 20000000,
       blockGasLimit: 12000000,
       gasPrice: 100000000000,
+      //   timeout: 90000
+    },
+    mumbai: {
+      url: process.env.MUMBAI,
+      // url: 'https://rpc-mainnet.maticvigil.com/',
+      accounts: [process.env.SECRET],
+      // blockGasLimit: 20000000,
+      // blockGasLimit: 12000000,
+      // gasPrice: 100000000000,
       //   timeout: 90000
     },
   },

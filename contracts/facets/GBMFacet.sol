@@ -23,8 +23,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     error NoSecondaryMarket();
 
     error AuctionNotStarted();
-
-    //
     error ContractEnabledAlready();
     error AuctionExists();
     error NotTokenOwner();
@@ -49,12 +47,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     error DurationTooHigh();
     error InvalidAuctionParams(string arg);
     error ContractDisabledAlready();
-
-    //for debugging
-    //   error AlreadyDefinedPreset();
-    event TokenIndex(uint256 index);
-    event log_uint(address a);
-    event log_uintt(uint256 a);
 
     /// @notice Place a GBM bid for a GBM auction
     /// @param _auctionID The auction you want to bid on
@@ -175,7 +167,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (a.info.endTime + getAuctionHammerTimeDuration(_auctionID) > block.timestamp)
             revert AuctionNotEnded(a.info.endTime + getAuctionHammerTimeDuration(_auctionID));
         //only owner or highestBidder should caim
-        emit log_uint(msg.sender);
         require(msg.sender == a.highestBidder || msg.sender == a.owner, "NotHighestBidderOrOwner");
         address ca = s.secondaryMarketTokenContract[a.contractID];
         uint256 tid = a.info.tokenID;
@@ -425,7 +416,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (a.highestBid > 0) {
             uint256 _proceeds = a.highestBid - a.auctionDebt;
             //Fees of pixelcraft and GBM
-            uint256 _auctionFees = (_proceeds * 20) / 100;
+            uint256 _auctionFees = (_proceeds * 5) / 100;
 
             //Send the debt + his due incentives from the seller to the highest bidder
             IERC20(s.GHST).transferFrom(a.owner, address(this), _auctionFees + a.dueIncentives + a.auctionDebt);
@@ -434,11 +425,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             uint256 ownerShare = _proceeds + a.auctionDebt + a.dueIncentives;
             IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
 
-            //10% goes to pixelcraft
-            uint256 pixelcraftShare = (_proceeds * 10) / 100;
+            //3% goes to pixelcraft
+            uint256 pixelcraftShare = (_proceeds * 3) / 100;
             IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
-            //10% goes to GBM
-            uint256 GBM = (_proceeds * 10) / 100;
+            //2% goes to GBM
+            uint256 GBM = (_proceeds * 2) / 100;
             IERC20(s.GHST).transfer(s.GBMAddress, GBM);
 
             // Transfer the token to the owner/canceller
