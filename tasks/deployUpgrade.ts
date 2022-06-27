@@ -104,8 +104,9 @@ task(
   .setAction(
     async (taskArgs: DeployUpgradeTaskArgs, hre: HardhatRuntimeEnvironment) => {
       const facets: string = taskArgs.facetsAndAddSelectors;
-      const facetsAndAddSelectors: FacetsAndAddSelectors[] =
-        convertStringToFacetAndSelectors(facets);
+      const facetsAndAddSelectors: FacetsAndAddSelectors[] = convertStringToFacetAndSelectors(
+        facets
+      );
       const diamondUpgrader: string = taskArgs.diamondUpgrader;
       const diamondAddress: string = taskArgs.diamondAddress;
       const useMultisig = taskArgs.useMultisig;
@@ -115,12 +116,10 @@ task(
 
       //Instantiate the Signer
       let signer: Signer;
-      const owner = await (
-        (await hre.ethers.getContractAt(
-          "OwnershipFacet",
-          diamondAddress
-        )) as OwnershipFacet
-      ).owner();
+      const owner = await ((await hre.ethers.getContractAt(
+        "OwnershipFacet",
+        diamondAddress
+      )) as OwnershipFacet).owner();
       const testing = ["hardhat", "localhost"].includes(hre.network.name);
 
       if (testing) {
@@ -129,7 +128,7 @@ task(
           params: [owner],
         });
         signer = await hre.ethers.getSigner(owner);
-      } else if (hre.network.name === "matic") {
+      } else if (hre.network.name === "matic" || "mumbai") {
         if (useLedger) {
           const {
             LedgerSigner,
@@ -240,13 +239,12 @@ task(
         //Choose to use a multisig or a simple deploy address
         if (useMultisig) {
           console.log("Diamond cut");
-          const tx: PopulatedTransaction =
-            await diamondCut.populateTransaction.diamondCut(
-              cut,
-              initAddress,
-              initCalldata,
-              { gasLimit: 800000 }
-            );
+          const tx: PopulatedTransaction = await diamondCut.populateTransaction.diamondCut(
+            cut,
+            initAddress,
+            initCalldata,
+            { gasLimit: 800000 }
+          );
 
           await sendToGnosisSafe(hre, diamondUpgrader, tx, signer);
         } else {

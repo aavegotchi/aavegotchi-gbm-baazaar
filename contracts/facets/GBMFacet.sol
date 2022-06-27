@@ -595,4 +595,8 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     ) public view returns (uint256) {
         return s.erc1155AuctionIndexes[_contract][id][amount];
     }
+
+    function changePubKey(bytes calldata _newPubKey) public onlyOwner {
+        s.backendPubKey = _newPubKey;
+    }
 }
