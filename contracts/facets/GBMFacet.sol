@@ -289,8 +289,8 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         a.biddingAllowed = true;
         //for recurring auction creations
         //   a.claimed = false;
-        emit Auction_Initialized(_aid, id, amount, ca, tokenKind);
-        emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid));
+        emit Auction_Initialized(_aid, id, amount, ca, tokenKind, _auctionPresetID);
+        emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
         return _aid;
     }
 
@@ -321,7 +321,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
         if (_tokenKind == ERC721) {
             a.info.endTime = _newEndTime;
-            emit Auction_Initialized(_auctionID, tid, 1, ca, _tokenKind);
+            emit Auction_Modified(_auctionID, 1, _newEndTime);
         }
 
         if (_tokenKind == ERC1155) {
@@ -351,12 +351,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
                     s.erc1155AuctionIndexes[ca][tid][_newTokenAmount]++;
                 }
             }
-            emit Auction_Initialized(_auctionID, tid, _newTokenAmount, ca, _tokenKind);
+            emit Auction_Modified(_auctionID, _newTokenAmount, _newEndTime);
         }
     }
 
     function _validateInitialAuction(InitiatorInfo memory _info) internal view {
-        //TODO: Add a minimum time for auction lifetime
         if (_info.startTime < block.timestamp || _info.startTime >= _info.endTime) revert StartOrEndTimeTooLow();
         uint256 duration = _info.endTime - _info.startTime;
         if (duration < 3600) revert DurationTooLow();

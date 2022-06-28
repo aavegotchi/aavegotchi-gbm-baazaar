@@ -12,11 +12,12 @@ interface IGBM {
         uint256 indexed _tokenID,
         uint256 indexed _tokenAmount,
         address _contractAddress,
-        bytes4 _tokenKind
+        bytes4 _tokenKind,
+        uint256 _presetID
     );
 
     //Event emitted when the start time of an auction changes (due to admin interaction )
-    event Auction_StartTimeUpdated(uint256 indexed _auctionID, uint256 _startTime);
+    event Auction_StartTimeUpdated(uint256 indexed _auctionID, uint256 _startTime, uint256 _endTime);
 
     //Event emitted when the end time of an auction changes (be it due to admin interaction or bid at the end)
     event Auction_EndTimeUpdated(uint256 indexed _auctionID, uint256 _endTime);
@@ -26,6 +27,9 @@ interface IGBM {
 
     //Event emitted when a bid is removed (due to a new bid displacing it)
     event Auction_BidRemoved(uint256 indexed _auctionID, address indexed _bidder, uint256 _bidAmount);
+
+    //Event emitted when an Auction is modified
+    event Auction_Modified(uint256 indexed _auctionID, uint64 indexed _newTokenAmount, uint80 indexed _newEndTime);
 
     //Event emitted when incentives are paid (due to a new bid rewarding the _earner bid)
     event Auction_IncentivePaid(uint256 indexed _auctionID, address indexed _earner, uint256 _incentiveAmount);
@@ -48,10 +52,10 @@ interface IGBM {
 
     // function erc20Currency() external view returns (address);
 
-	// //DEPRECATED
-    // function getAuctionID(address _contract, uint256 _tokenID) external view returns (uint256); 
+    // //DEPRECATED
+    // function getAuctionID(address _contract, uint256 _tokenID) external view returns (uint256);
 
-	// //DEPRECATED
+    // //DEPRECATED
     // function getAuctionID(address _contract, uint256 _tokenID, uint256 _tokenIndex) external view returns (uint256);
 
     // function getTokenId(uint256 _auctionId) external view returns (uint256);
@@ -83,6 +87,6 @@ interface IGBM {
     // function getAuctionIncMax(uint256 _auctionId) external view returns (uint256);
 
     // function getAuctionBidMultiplier(uint256 _auctionId) external view returns (uint256);
-	
-	// function getAuctionID(address _contract, uint256 _tokenID, uint256 _tokenIndex, bytes4 _tokenKind) external view returns (uint256);
+
+    // function getAuctionID(address _contract, uint256 _tokenID, uint256 _tokenIndex, bytes4 _tokenKind) external view returns (uint256);
 }
