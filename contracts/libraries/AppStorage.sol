@@ -60,8 +60,9 @@ struct Auction {
 
 struct AppStorage {
     address pixelcraft;
-    //address daoTreasury;
+    address DAO;
     address GBMAddress;
+    address Treasury;
     address GHST;
     mapping(address => bool) contractBiddingAllowed;
     mapping(uint256 => Auction) auctions; //_auctionId => auctions

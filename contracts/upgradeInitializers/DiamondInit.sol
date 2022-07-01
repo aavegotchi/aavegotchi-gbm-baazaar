@@ -22,12 +22,15 @@ contract DiamondInit {
         bytes memory backendPubKey,
         address pixelcraft,
         address GHST,
-        address GBM
+        address GBM,
+        address Treasury,
+        address DAO
     ) external {
         s.pixelcraft = pixelcraft;
         s.GHST = GHST;
         s.GBMAddress = GBM;
-
+        s.Treasury = Treasury;
+        s.DAO = DAO;
         s.backendPubKey = backendPubKey;
 
         // adding ERC165 data

@@ -201,16 +201,22 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         IERC20(s.GHST).transfer(s.playerRewards, playerRewardsShare);
         IERC20(s.GHST).transfer(s.daoTreasury, daoShare);
 */
-        //80% goes to auction owner
-        uint256 ownerShare = (_proceeds * 80) / 100;
+        //96% goes to auction owner
+        uint256 ownerShare = (_proceeds * 96) / 100;
         IERC20(s.GHST).transfer(a.owner, ownerShare);
 
-        //10% goes to pixelcraft
-        uint256 pixelcraftShare = (_proceeds * 10) / 100;
+        //1% goes to pixelcraft
+        uint256 pixelcraftShare = (_proceeds * 1) / 100;
         IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
-        //10% goes to GBM
-        uint256 GBM = (_proceeds * 10) / 100;
+        //1% goes to GBM
+        uint256 GBM = (_proceeds * 1) / 100;
         IERC20(s.GHST).transfer(s.GBMAddress, GBM);
+        //1% goes to Treasury
+        uint256 Treasury = (_proceeds * 1) / 100;
+        IERC20(s.GHST).transfer(s.Treasury, Treasury);
+        //0.5% goes to DAO
+        uint256 DAO = (_proceeds * 5) / 1000;
+        IERC20(s.GHST).transfer(s.DAO, DAO);
 
         if (a.info.tokenKind == ERC721) {
             _sendTokens(ca, a.highestBidder, ERC721, tid, 1);
@@ -414,8 +420,8 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
         if (a.highestBid > 0) {
             uint256 _proceeds = a.highestBid - a.auctionDebt;
-            //Fees of pixelcraft and GBM
-            uint256 _auctionFees = (_proceeds * 5) / 100;
+            //Fees of pixelcraft,GBM,DAO and Treasury
+            uint256 _auctionFees = (_proceeds * 4) / 100;
 
             //Send the debt + his due incentives from the seller to the highest bidder
             IERC20(s.GHST).transferFrom(a.owner, address(this), _auctionFees + a.dueIncentives + a.auctionDebt);
@@ -424,12 +430,18 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             uint256 ownerShare = _proceeds + a.auctionDebt + a.dueIncentives;
             IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
 
-            //3% goes to pixelcraft
-            uint256 pixelcraftShare = (_proceeds * 3) / 100;
+            //1.5% goes to pixelcraft
+            uint256 pixelcraftShare = (_proceeds * 15) / 1000;
             IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
-            //2% goes to GBM
-            uint256 GBM = (_proceeds * 2) / 100;
+            //1% goes to GBM
+            uint256 GBM = (_proceeds * 1) / 100;
             IERC20(s.GHST).transfer(s.GBMAddress, GBM);
+            //0.5% to DAO
+            uint256 DAO = (_proceeds * 5) / 1000;
+            IERC20(s.GHST).transfer(s.DAO, DAO);
+            //1% to treasury
+            uint256 Treasury = (_proceeds * 1) / 100;
+            IERC20(s.GHST).transfer(s.Treasury, Treasury);
 
             // Transfer the token to the owner/canceller
             if (a.info.tokenKind == ERC721) {
