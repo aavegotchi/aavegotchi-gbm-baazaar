@@ -18,4 +18,4 @@ jobs:
         with:
           version: nightly
       - name: Run tests
-        run: npx hardhat compile && forge update && forge test
+        run: hardhat compile && forge update && forge test
