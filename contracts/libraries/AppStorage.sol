@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+
 import {LibDiamond} from "./LibDiamond.sol";
 
 //Struct used to store the representation of an NFT being auctionned
@@ -17,6 +18,7 @@ import {LibDiamond} from "./LibDiamond.sol";
 // }
 bytes4 constant ERC721 = 0x73ad2146;
 bytes4 constant ERC1155 = 0x973bb640;
+
 struct InitiatorInfo {
     uint80 startTime;
     uint80 endTime;
@@ -24,6 +26,7 @@ struct InitiatorInfo {
     bytes4 tokenKind;
     uint256 tokenID;
 }
+
 //Generic presets
 struct Preset {
     uint64 incMin;
@@ -33,6 +36,7 @@ struct Preset {
     uint240 bidDecimals;
     uint16 hammerTimeDuration;
 }
+
 struct Auction {
     address owner;
     uint96 highestBid;
@@ -69,7 +73,8 @@ struct AppStorage {
     mapping(address => mapping(uint256 => uint256)) erc1155TokensIndex; //Contract => TokenID => Amount being auctionned
     bytes backendPubKey;
     mapping(address => mapping(uint256 => bool)) erc721AuctionExists; //Contract => TokenID => Existence
-    mapping(address => mapping(uint256 => mapping(uint256 => uint256))) erc1155AuctionIndexes; //Contract=>TokenID=>Amount=>maxIndex;
+    mapping(address => mapping(uint256 => mapping(uint256 => uint256)))
+        erc1155AuctionIndexes; //Contract=>TokenID=>Amount=>maxIndex;
     mapping(uint256 => Preset) auctionPresets; // presestID => Configuration parameters
     mapping(uint256 => address) secondaryMarketTokenContract; //tokenContractId => Token contract address
 }

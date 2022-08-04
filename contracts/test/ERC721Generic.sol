@@ -32,8 +32,16 @@ contract ERC721Generic is IERC721, IERC165 {
     /// @dev NFTs assigned to zero address are considered invalid, and queries about them do throw.
     /// @param _tokenId The identifier for an NFT
     /// @return The address of the owner of the NFT
-    function ownerOf(uint256 _tokenId) external view override returns (address) {
-        require(ownerOfVar[_tokenId] != address(0x0), "ownerOf: ERC721 NFTs assigned to the zero address are considered invalid");
+    function ownerOf(uint256 _tokenId)
+        external
+        view
+        override
+        returns (address)
+    {
+        require(
+            ownerOfVar[_tokenId] != address(0x0),
+            "ownerOf: ERC721 NFTs assigned to the zero address are considered invalid"
+        );
         return ownerOfVar[_tokenId];
     }
 
@@ -54,7 +62,11 @@ contract ERC721Generic is IERC721, IERC165 {
         address _to,
         uint256 _tokenId,
         bytes calldata data
-    ) external payable override {
+    )
+        external
+        payable
+        override
+    {
         safeTransferFromInternal(_from, _to, _tokenId, data);
     }
 
@@ -64,11 +76,11 @@ contract ERC721Generic is IERC721, IERC165 {
     /// @param _from The current owner of the NFT
     /// @param _to The new owner
     /// @param _tokenId The NFT to transfer
-    function safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _tokenId
-    ) external payable override {
+    function safeTransferFrom(address _from, address _to, uint256 _tokenId)
+        external
+        payable
+        override
+    {
         safeTransferFromInternal(_from, _to, _tokenId, "");
     }
 
@@ -82,11 +94,11 @@ contract ERC721Generic is IERC721, IERC165 {
     /// @param _from The current owner of the NFT
     /// @param _to The new owner
     /// @param _tokenId The NFT to transfer
-    function transferFrom(
-        address _from,
-        address _to,
-        uint256 _tokenId
-    ) external payable override {
+    function transferFrom(address _from, address _to, uint256 _tokenId)
+        external
+        payable
+        override
+    {
         transferFromInternal(_from, _to, _tokenId);
     }
 
@@ -96,9 +108,15 @@ contract ERC721Generic is IERC721, IERC165 {
     ///  operator of the current owner.
     /// @param _approved The new approved NFT controller
     /// @param _tokenId The NFT to approve
-    function approve(address _approved, uint256 _tokenId) external payable override {
+    function approve(address _approved, uint256 _tokenId)
+        external
+        payable
+        override
+    {
         require(
-            msg.sender == ownerOfVar[_tokenId] || approvedOperator[ownerOfVar[_tokenId]][msg.sender],
+            msg.sender
+                == ownerOfVar[_tokenId]
+                || approvedOperator[ownerOfVar[_tokenId]][msg.sender],
             "approve: msg.sender is not allowed to approve the token"
         );
 
@@ -112,7 +130,10 @@ contract ERC721Generic is IERC721, IERC165 {
     ///  multiple operators per owner.
     /// @param _operator Address to add to the set of authorized operators
     /// @param _approved True if the operator is approved, false to revoke approval
-    function setApprovalForAll(address _operator, bool _approved) external override {
+    function setApprovalForAll(address _operator, bool _approved)
+        external
+        override
+    {
         approvedOperator[msg.sender][_operator] = _approved;
         emit ApprovalForAll(msg.sender, _operator, _approved);
     }
@@ -121,7 +142,12 @@ contract ERC721Generic is IERC721, IERC165 {
     /// @dev Throws if `_tokenId` is not a valid NFT.
     /// @param _tokenId The NFT to find the approved address for
     /// @return The approved address for this NFT, or the zero address if there is none
-    function getApproved(uint256 _tokenId) external view override returns (address) {
+    function getApproved(uint256 _tokenId)
+        external
+        view
+        override
+        returns (address)
+    {
         return approvedTransferAddress[_tokenId];
     }
 
@@ -129,7 +155,12 @@ contract ERC721Generic is IERC721, IERC165 {
     /// @param _owner The address that owns the NFTs
     /// @param _operator The address that acts on behalf of the owner
     /// @return True if `_operator` is an approved operator for `_owner`, false otherwise
-    function isApprovedForAll(address _owner, address _operator) external view override returns (bool) {
+    function isApprovedForAll(address _owner, address _operator)
+        external
+        view
+        override
+        returns (bool)
+    {
         return approvedOperator[_owner][_operator];
     }
 
@@ -139,8 +170,13 @@ contract ERC721Generic is IERC721, IERC165 {
     ///  uses less than 30,000 gas.
     /// @return `true` if the contract implements `interfaceID` and
     ///  `interfaceID` is not 0xffffffff, `false` otherwise
-    function supportsInterface(bytes4 interfaceID) external pure override returns (bool) {
-        return (interfaceID == 0x80ac58cd);
+    function supportsInterface(bytes4 interfaceID)
+        external
+        pure
+        override
+        returns (bool)
+    {
+        return interfaceID == 0x80ac58cd;
     }
 
     /// @notice Mint a token for msg.sender
@@ -189,27 +225,38 @@ contract ERC721Generic is IERC721, IERC165 {
         address _to,
         uint256 _tokenId,
         bytes memory data
-    ) internal {
+    )
+        internal
+    {
         transferFromInternal(_from, _to, _tokenId);
 
         if (isContract(_to)) {
             //bytes4(keccak256("onERC721Received(address,address,uint256,bytes)")) == 0x150b7a02
-            require(IERC721TokenReceiver(_to).onERC721Received(msg.sender, _from, _tokenId, data) == bytes4(0x150b7a02));
+            require(
+                IERC721TokenReceiver(_to).onERC721Received(msg.sender, _from, _tokenId, data)
+                    == bytes4(0x150b7a02)
+            );
         }
     }
 
     /// @dev Actual token transfer code called by all the other functions
-    function transferFromInternal(
-        address _from,
-        address _to,
-        uint256 _tokenId
-    ) internal {
-        require(_to != address(0x0), "transferFromInternal: Tokens cannot be send to 0x0. Use 0xdead instead ?");
-        require(ownerOfVar[_tokenId] == _from, "transferFromInternal: _from is not the owner of the token");
+    function transferFromInternal(address _from, address _to, uint256 _tokenId)
+        internal
+    {
         require(
-            msg.sender == ownerOfVar[_tokenId] ||
-                approvedOperator[ownerOfVar[_tokenId]][msg.sender] ||
-                msg.sender == approvedTransferAddress[_tokenId],
+            _to != address(0x0),
+            "transferFromInternal: Tokens cannot be send to 0x0. Use 0xdead instead ?"
+        );
+        require(
+            ownerOfVar[_tokenId] == _from,
+            "transferFromInternal: _from is not the owner of the token"
+        );
+        require(
+            msg.sender
+                == ownerOfVar[_tokenId]
+                || approvedOperator[ownerOfVar[_tokenId]][msg.sender]
+                || msg.sender
+                == approvedTransferAddress[_tokenId],
             "transferFromInternal: msg.sender is not allowed to manipulate the token"
         );
 
@@ -238,10 +285,11 @@ contract ERC721Generic is IERC721, IERC165 {
         // for accounts without code, i.e. `keccak256('')`
         bytes32 codehash;
 
-        bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+        bytes32 accountHash =
+            0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
         assembly {
             codehash := extcodehash(_address)
         }
-        return (codehash != accountHash && codehash != 0x0);
+        return codehash != accountHash && codehash != 0x0;
     }
 }

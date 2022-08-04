@@ -37,50 +37,17 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
     address bidder3 = 0x9e2f52990b1D802cD6F277ed116b2c76a765C2AF;
 
     uint256 bidder2priv = 0x18329f54ac729d4765e74e32b1bf7a5ced7a2c0136a03ce18ed1590d43f39890;
-    // uint8 v;
-    // bytes32 r;
-    // bytes32 s;
 
-    ////FACET DATA
-    // FacetCut[] cut;
-    bytes4[] GBMSELECTORS = [
-        bytes4(0xbc292782),
-        0x96b5a755,
-        0x0b93ba1c,
-        0x379607f5,
-        0x8ab03e31,
-        0x7184e85d,
-        0x4d5126c1,
-        0x3f21cf81,
-        0xda081c94,
-        0x6b9a894e,
-        0x03ea66a4,
-        0x930e79f1,
-        0x470e9f8d,
-        0xc26e748c,
-        0xdfab114b,
-        0xdb145701,
-        0xef8c55fd,
-        0xfc3fc4ed,
-        0x5608de71,
-        0x919e84f5,
-        0xe07bc69c,
-        0xaefa7d98,
-        0x14ff5ea3,
-        0x0facebea,
-        0x1a64ba1f,
-        0xbc197c81,
-        0xf23a6e61,
-        0x150b7a02,
-        0x10e77df8,
-        0x50d265d4,
-        0x199da6b4,
-        0x66ab9575,
-        0x4f6f108a
-    ];
+    uint8 v;
+    bytes32 r;
+    bytes32 s;
 
-    bytes4[] OWNERSHIP_SELECTORS = [bytes4(0xf2fde38b), 0x8da5cb5b];
-    bytes4[] LOUPE_SELECTORS = [bytes4(0x7a0ed627), 0xadfca15e, 0x52ef6b2c, 0xcdffacc6, 0x01ffc9a7];
+    //FACET DATA
+
+    bytes4[] GBMSELECTORS = generateSelectors("GBMFacet");
+
+    bytes4[] OWNERSHIP_SELECTORS = generateSelectors("OwnershipFacet");
+    bytes4[] LOUPE_SELECTORS = generateSelectors("DiamondLoupeFacet");
 
     string pubKey =
         "18db6dd94c8b8eeeeadbd0f7b4a0050135f086e0ba16f915773652d10e39e409a60a59adc13c2747f8fc4e405a08327849f51a2ed7073eb19f0a815c73dbd399";
@@ -116,19 +83,21 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         //generate init payload
         bytes memory payload = abi.encodeWithSelector(
-            bytes4(0x8c63feb4),
+            dInit.init.selector,
             fromHex(pubKey),
             address(0xD4151c984e6CF33E04FFAAF06c3374B2926Ecc64),
             address(erc20),
+            address(0x27DF5C6dcd360f372e23d5e63645eC0072D0C098),
+            address(0x27DF5C6dcd360f372e23d5e63645eC0072D0C098),
             address(0x27DF5C6dcd360f372e23d5e63645eC0072D0C098)
         );
 
         //upgrade diamond with facets
         //GBM
         FacetCut[] memory cut = new FacetCut[](3);
-        cut[0] = (FacetCut({facetAddress: address(gFacet), action: FacetCutAction.Add, functionSelectors: GBMSELECTORS}));
-        cut[1] = (FacetCut({facetAddress: address(dLoupe), action: FacetCutAction.Add, functionSelectors: LOUPE_SELECTORS}));
-        cut[2] = (FacetCut({facetAddress: address(ownerF), action: FacetCutAction.Add, functionSelectors: OWNERSHIP_SELECTORS}));
+        cut[0] = FacetCut({facetAddress: address(gFacet), action: FacetCutAction.Add, functionSelectors: GBMSELECTORS});
+        cut[1] = FacetCut({facetAddress: address(dLoupe), action: FacetCutAction.Add, functionSelectors: LOUPE_SELECTORS});
+        cut[2] = FacetCut({facetAddress: address(ownerF), action: FacetCutAction.Add, functionSelectors: OWNERSHIP_SELECTORS});
         IDiamondCut(address(diamond)).diamondCut(cut, address(dInit), payload);
 
         //INIT SAMPLE ERC721 and ERC1155 AUCTION
@@ -142,7 +111,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         //set a preset
         //using highest preset
-        GBMFacet(address(diamond)).setAuctionPresets(0, Preset(1500, 15000, 18270, 15000, 100000, 1200));
+        GBMFacet(address(diamond)).setAuctionPresets(0, Preset(1500, 15000, 18270, 15000, 100000, 900));
         cheat.expectRevert(GBMFacet.NoSecondaryMarket.selector);
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 1 days, uint64(1), bytes4(ERC721), 1),
@@ -341,31 +310,42 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         //can't claim an ongoing auction
         cheat.expectRevert(
-            abi.encodeWithSelector(GBMFacet.AuctionNotEnded.selector, GBMFacet(address(diamond)).getAuctionEndTime(erc721Auction) + 1200)
+            abi.encodeWithSelector(GBMFacet.AuctionNotEnded.selector, GBMFacet(address(diamond)).getAuctionEndTime(erc721Auction) + 900)
         );
         GBMFacet(address(diamond)).claim(erc721Auction);
-
+        uint256 oldEndTime = GBMFacet(address(diamond)).getAuctionEndTime(erc1155Auction);
         //can't claim for someone else
         cheat.expectRevert("NotHighestBidderOrOwner");
-        //jump through 4days+hammer time
-        cheat.warp(block.timestamp + 4 days);
-        cheat.stopPrank();
-        cheat.prank(bidder2);
+        cheat.startPrank(bidder2);
+        cheat.warp(block.timestamp + 3 days + 15 minutes);
         GBMFacet(address(diamond)).claim(erc721Auction);
-        cheat.prank(bidder3);
 
+        //make sure bidding during hammertime extends duration
+        cheat.warp(block.timestamp - 15 minutes);
+        //bid again during hammer time with bidder2
+        sig = constructSig(bidder2, erc1155Auction, 200e18, 150e18, bidder2priv);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction, 200e18, 150e18, 11, 0, 3, sig);
+        uint256 newEndTime = GBMFacet(address(diamond)).getAuctionEndTime(erc1155Auction);
+        //make sure endTime is extended by 15minutes
+        assertEq(newEndTime, oldEndTime + 15 minutes);
+        cheat.stopPrank();
         //claim erc721 auction
+        cheat.warp(block.timestamp + 15 minutes);
+        cheat.startPrank(bidder3);
+        //erc1155 auction outbid by bidder3
+        //which also extends duration by 15 minutes
+        sig = constructSig(bidder3, erc1155Auction, 250e18, 200e18, bidder2priv);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction, 250e18, 200e18, 11, 0, 3, sig);
+        cheat.warp(block.timestamp + 30 minutes);
         GBMFacet(address(diamond)).claim(erc721Auction);
         assertEq(erc721.ownerOf(1), bidder3);
 
         //claim erc1155 auction
         //this time owner claims
-        //cheat.stopPrank();
         GBMFacet(address(diamond)).claim(erc1155Auction);
         //reduce index for erc1155 auction
         assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 4), 0);
 
-        cheat.prank(bidder3);
         //can't claim already claimed auction
         cheat.expectRevert(GBMFacet.AuctionClaimed.selector);
         GBMFacet(address(diamond)).claim(erc721Auction);
@@ -471,5 +451,14 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         bytes calldata /* _data */
     ) external pure returns (bytes4) {
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
+    }
+
+    function generateSelectors(string memory _facetName) internal returns (bytes4[] memory selectors) {
+        string[] memory cmd = new string[](3);
+        cmd[0] = "node";
+        cmd[1] = "scripts/genSelectors.js";
+        cmd[2] = _facetName;
+        bytes memory res = cheat.ffi(cmd);
+        selectors = abi.decode(res, (bytes4[]));
     }
 }

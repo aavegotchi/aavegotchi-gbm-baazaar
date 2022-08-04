@@ -43,13 +43,19 @@ contract ERC1155Generic is IERC1155, IERC165 {
         uint256 _id,
         uint256 _value,
         bytes calldata _data
-    ) external override {
+    )
+        external
+        override
+    {
         require(
             msg.sender == _from || isApprovedForAllVar[_from][msg.sender],
             "safeTransferFrom: msg.sender is not allowed to manipulate _from tokens"
         );
         require(_to != address(0x0), "safeTransferFrom: cannot transfer to 0x0");
-        require(_value <= balanceOfVar[_from][_id], "safeTransferFrom: Balance of _from is too low to transfer _value tokens");
+        require(
+            _value <= balanceOfVar[_from][_id],
+            "safeTransferFrom: Balance of _from is too low to transfer _value tokens"
+        );
 
         //Adjusting the balances
         balanceOfVar[_from][_id] = balanceOfVar[_from][_id] - _value;
@@ -60,7 +66,12 @@ contract ERC1155Generic is IERC1155, IERC165 {
 
         if (isContract(_to)) {
             //bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")) == 0xf23a6e61
-            require(IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _value, _data) == bytes4(0xf23a6e61));
+            require(
+                IERC1155TokenReceiver(_to).onERC1155Received(
+                        msg.sender, _from, _id, _value, _data
+                    )
+                    == bytes4(0xf23a6e61)
+            );
         }
     }
 
@@ -84,22 +95,35 @@ contract ERC1155Generic is IERC1155, IERC165 {
         uint256[] calldata _ids,
         uint256[] calldata _values,
         bytes calldata _data
-    ) external override {
+    )
+        external
+        override
+    {
         require(
             msg.sender == _from || isApprovedForAllVar[_from][msg.sender],
             "safeBatchTransferFrom: msg.sender is not allowed to manipulate _from tokens"
         );
-        require(_to != address(0x0), "safeBatchTransferFrom: cannot transfer to 0x0");
-        require(_ids.length == _values.length, "safeBatchTransferFrom: _ids and _values lenght mismatch");
+        require(
+            _to != address(0x0), "safeBatchTransferFrom: cannot transfer to 0x0"
+        );
+        require(
+            _ids.length == _values.length,
+            "safeBatchTransferFrom: _ids and _values lenght mismatch"
+        );
 
         uint256 tmp;
         while (tmp < _ids.length) {
             //using while for 0 case optimization
-            require(_values[tmp] <= balanceOfVar[_from][_ids[tmp]], "safeBatchTransferFrom: Balance of _from is too low to transfer _values tokens");
+            require(
+                _values[tmp] <= balanceOfVar[_from][_ids[tmp]],
+                "safeBatchTransferFrom: Balance of _from is too low to transfer _values tokens"
+            );
 
             //Adjusting the balances
-            balanceOfVar[_from][_ids[tmp]] = balanceOfVar[_from][_ids[tmp]] - _values[tmp];
-            balanceOfVar[_to][_ids[tmp]] = balanceOfVar[_to][_ids[tmp]] + _values[tmp];
+            balanceOfVar[_from][_ids[tmp]] =
+                balanceOfVar[_from][_ids[tmp]] - _values[tmp];
+            balanceOfVar[_to][_ids[tmp]] =
+                balanceOfVar[_to][_ids[tmp]] + _values[tmp];
         }
 
         //Emitting the event
@@ -107,7 +131,12 @@ contract ERC1155Generic is IERC1155, IERC165 {
 
         if (isContract(_to)) {
             //bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)")) == 0xf23a6e61
-            require(IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _values, _data) == bytes4(0xbc197c81));
+            require(
+                IERC1155TokenReceiver(_to).onERC1155BatchReceived(
+                        msg.sender, _from, _ids, _values, _data
+                    )
+                    == bytes4(0xbc197c81)
+            );
         }
     }
 
@@ -115,7 +144,12 @@ contract ERC1155Generic is IERC1155, IERC165 {
     /// @param _owner  The address of the token holder
     /// @param _id     ID of the token
     /// @return        The _owner's balance of the token type requested
-    function balanceOf(address _owner, uint256 _id) external view override returns (uint256) {
+    function balanceOf(address _owner, uint256 _id)
+        external
+        view
+        override
+        returns (uint256)
+    {
         return balanceOfVar[_owner][_id];
     }
 
@@ -123,7 +157,12 @@ contract ERC1155Generic is IERC1155, IERC165 {
     /// @param _owners The addresses of the token holders
     /// @param _ids    ID of the tokens
     /// @return        The _owner's balance of the token types requested (i.e. balance for each (owner, id) pair)
-    function balanceOfBatch(address[] calldata _owners, uint256[] calldata _ids) external view override returns (uint256[] memory) {
+    function balanceOfBatch(address[] calldata _owners, uint256[] calldata _ids)
+        external
+        view
+        override
+        returns (uint256[] memory)
+    {
         //Making value readable from stack directly instead of having to read the stack as pointer to get length = less gas when looping
         uint256 ownerslength = _owners.length;
         uint256 idslength = _ids.length;
@@ -151,7 +190,10 @@ contract ERC1155Generic is IERC1155, IERC165 {
     /// @dev MUST emit the ApprovalForAll event on success.
     /// @param _operator  Address to add to the set of authorized operators
     /// @param _approved  True if the operator is approved, false to revoke approval
-    function setApprovalForAll(address _operator, bool _approved) external override {
+    function setApprovalForAll(address _operator, bool _approved)
+        external
+        override
+    {
         //mapping(address => mapping(address => bool)) internal isApprovedForAllVar; // owner => oprator => isapproved ?
         isApprovedForAllVar[msg.sender][_operator] = _approved;
         emit ApprovalForAll(msg.sender, _operator, _approved);
@@ -161,7 +203,12 @@ contract ERC1155Generic is IERC1155, IERC165 {
     /// @param _owner     The owner of the tokens
     /// @param _operator  Address of authorized operator
     /// @return           True if the operator is approved, false if not
-    function isApprovedForAll(address _owner, address _operator) external view override returns (bool) {
+    function isApprovedForAll(address _owner, address _operator)
+        external
+        view
+        override
+        returns (bool)
+    {
         return isApprovedForAllVar[_owner][_operator];
     }
 
@@ -171,8 +218,13 @@ contract ERC1155Generic is IERC1155, IERC165 {
     ///  uses less than 30,000 gas.
     /// @return `true` if the contract implements `interfaceID` and
     ///  `interfaceID` is not 0xffffffff, `false` otherwise
-    function supportsInterface(bytes4 interfaceID) external pure override returns (bool) {
-        return (interfaceID == 0xd9b67a26);
+    function supportsInterface(bytes4 interfaceID)
+        external
+        pure
+        override
+        returns (bool)
+    {
+        return interfaceID == 0xd9b67a26;
     }
 
     /// @notice Mint tokens for message.sender
@@ -187,20 +239,30 @@ contract ERC1155Generic is IERC1155, IERC165 {
 
         if (isContract(msg.sender)) {
             //bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")) == 0xf23a6e61
-            require(IERC1155TokenReceiver(msg.sender).onERC1155Received(msg.sender, msg.sender, _id, _value, "") == bytes4(0xf23a6e61));
+            require(
+                IERC1155TokenReceiver(msg.sender).onERC1155Received(
+                        msg.sender, msg.sender, _id, _value, ""
+                    )
+                    == bytes4(0xf23a6e61)
+            );
         }
     }
 
     /// @notice Mint tokens for message.sender
     /// @param _ids      The tokens IDs
     /// @param _values   Minted amounts. length must match _ids
-    function mint(uint256[] calldata _ids, uint256[] calldata _values) external {
-        require(_ids.length == _values.length, "mint: _ids and _values lenght mismatch");
+    function mint(uint256[] calldata _ids, uint256[] calldata _values)
+        external
+    {
+        require(
+            _ids.length == _values.length, "mint: _ids and _values lenght mismatch"
+        );
 
         uint256 tmp;
         while (tmp < _ids.length) {
             //using while for 0 case optimization
-            balanceOfVar[msg.sender][_ids[tmp]] = balanceOfVar[msg.sender][_ids[tmp]] + _values[tmp];
+            balanceOfVar[msg.sender][_ids[tmp]] =
+                balanceOfVar[msg.sender][_ids[tmp]] + _values[tmp];
         }
 
         //Emitting the event
@@ -208,7 +270,12 @@ contract ERC1155Generic is IERC1155, IERC165 {
 
         if (isContract(msg.sender)) {
             //bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)")) == 0xf23a6e61
-            require(IERC1155TokenReceiver(msg.sender).onERC1155BatchReceived(msg.sender, address(0x0), _ids, _values, "") == bytes4(0xbc197c81));
+            require(
+                IERC1155TokenReceiver(msg.sender).onERC1155BatchReceived(
+                        msg.sender, address(0x0), _ids, _values, ""
+                    )
+                    == bytes4(0xbc197c81)
+            );
         }
     }
 
@@ -220,10 +287,11 @@ contract ERC1155Generic is IERC1155, IERC165 {
         // and 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 is returned
         // for accounts without code, i.e. `keccak256('')`
         bytes32 codehash;
-        bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+        bytes32 accountHash =
+            0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
         assembly {
             codehash := extcodehash(_address)
         }
-        return (codehash != accountHash && codehash != 0x0);
+        return codehash != accountHash && codehash != 0x0;
     }
 }

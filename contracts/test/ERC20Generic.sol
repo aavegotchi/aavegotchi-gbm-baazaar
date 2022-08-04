@@ -27,8 +27,15 @@ contract ERC20Generic is IERC20 {
     /// @param _to The address of the recipient
     /// @param _value The amount of token to send
     /// @return success true if success, throw if failed
-    function transfer(address _to, uint256 _value) public override returns (bool success) {
-        require(balanceOf[msg.sender] >= _value, "transfer: msg.sender balance is too low");
+    function transfer(address _to, uint256 _value)
+        public
+        override
+        returns (bool success)
+    {
+        require(
+            balanceOf[msg.sender] >= _value,
+            "transfer: msg.sender balance is too low"
+        );
         balanceOf[msg.sender] = balanceOf[msg.sender] - _value;
         balanceOf[_to] = balanceOf[_to] + _value;
         emit Transfer(msg.sender, _to, _value);
@@ -42,15 +49,21 @@ contract ERC20Generic is IERC20 {
     /// @param _to The address of the account being given tokens
     /// @param _value The amount of token to send
     /// @return success true if success, throw if failed
-    function transferFrom(
-        address _from,
-        address _to,
-        uint256 _value
-    ) public override returns (bool success) {
-        require(balanceOf[_from] >= _value, "transferFrom: _from balance is too low");
-        require(individualAllowance[_from][msg.sender] >= _value || msg.sender == _from, "transferFrom: msg.sender allowance with _from is too low");
+    function transferFrom(address _from, address _to, uint256 _value)
+        public
+        override
+        returns (bool success)
+    {
+        require(
+            balanceOf[_from] >= _value, "transferFrom: _from balance is too low"
+        );
+        require(
+            individualAllowance[_from][msg.sender] >= _value || msg.sender == _from,
+            "transferFrom: msg.sender allowance with _from is too low"
+        );
         if (msg.sender != _from) {
-            individualAllowance[_from][msg.sender] = individualAllowance[_from][msg.sender] - _value;
+            individualAllowance[_from][msg.sender] =
+                individualAllowance[_from][msg.sender] - _value;
         }
         balanceOf[_from] = balanceOf[_from] - _value;
         balanceOf[_to] = balanceOf[_to] + _value;
@@ -62,7 +75,11 @@ contract ERC20Generic is IERC20 {
     /// @param _spender The address of the account being approved for tokens
     /// @param _value The amount of token to be spent in total
     /// @return success true if success
-    function approve(address _spender, uint256 _value) public override returns (bool success) {
+    function approve(address _spender, uint256 _value)
+        public
+        override
+        returns (bool success)
+    {
         individualAllowance[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, _value);
         return true;
@@ -72,7 +89,12 @@ contract ERC20Generic is IERC20 {
     /// @param _owner The address of the account being approved for tokens
     /// @param _spender The amount of token to be spent in total
     /// @return remaining the allowance of _spender on behalf of _owner
-    function allowance(address _owner, address _spender) public view override returns (uint256 remaining) {
+    function allowance(address _owner, address _spender)
+        public
+        view
+        override
+        returns (uint256 remaining)
+    {
         return individualAllowance[_owner][_spender];
     }
 

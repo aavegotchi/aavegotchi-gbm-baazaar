@@ -20,7 +20,10 @@ contract DiamondCutFacet is IDiamondCut {
         FacetCut[] calldata _diamondCut,
         address _init,
         bytes calldata _calldata
-    ) external override {
+    )
+        external
+        override
+    {
         LibDiamond.enforceIsContractOwner();
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         uint256 originalSelectorCount = ds.selectorCount;
@@ -33,7 +36,8 @@ contract DiamondCutFacet is IDiamondCut {
         }
         // loop through diamond cut
         for (uint256 facetIndex; facetIndex < _diamondCut.length; facetIndex++) {
-            (selectorCount, selectorSlot) = LibDiamond.addReplaceRemoveFacetSelectors(
+            (selectorCount, selectorSlot) = LibDiamond
+                .addReplaceRemoveFacetSelectors(
                 selectorCount,
                 selectorSlot,
                 _diamondCut[facetIndex].facetAddress,

@@ -43,7 +43,7 @@ const lowPreset: Preset = {
   bidMultiplier: 500,
   stepMin: 10000,
   bidDecimals: 1000,
-  hammerTimeDuration: 300,
+  hammerTimeDuration: 900,
 };
 
 const mediumPreset: Preset = {
@@ -52,7 +52,7 @@ const mediumPreset: Preset = {
   bidMultiplier: 4970,
   stepMin: 5000,
   bidDecimals: 100000,
-  hammerTimeDuration: 300,
+  hammerTimeDuration: 900,
 };
 
 const highPreset: Preset = {
@@ -61,7 +61,7 @@ const highPreset: Preset = {
   bidMultiplier: 11000,
   stepMin: 10000,
   bidDecimals: 100000,
-  hammerTimeDuration: 300,
+  hammerTimeDuration: 900,
 };
 
 const gasPrice = 20000000000;

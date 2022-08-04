@@ -25,7 +25,9 @@ contract DiamondInit {
         address GBM,
         address Treasury,
         address DAO
-    ) external {
+    )
+        external
+    {
         s.pixelcraft = pixelcraft;
         s.GHST = GHST;
         s.GBMAddress = GBM;
