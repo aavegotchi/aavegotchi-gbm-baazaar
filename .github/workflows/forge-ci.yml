@@ -18,4 +18,4 @@ jobs:
         with:
           version: nightly
       - name: Run tests
-        run: hardhat compile && forge update && forge test
+        run: yarn add @nomiclabs/hardhat-ethers && npx hardhat compile && forge update && forge test
