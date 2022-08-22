@@ -24,18 +24,7 @@ interface Preset {
   bidMultiplier: BigNumberish;
   stepMin: BigNumberish;
   bidDecimals: BigNumberish;
-  hammerTimeDuration: BigNumberish;
 }
-
-//Medium Preset
-let startTime = Math.floor(Date.now() / 1000);
-let endTime = Math.floor(Date.now() / 1000) + 86400;
-let hammerTimeDuration = 300;
-let bidDecimals = 100000;
-let stepMin = 10000;
-let incMax = 10000;
-let incMin = 1000;
-let bidMultiplier = 11120;
 
 const lowPreset: Preset = {
   incMin: 500,
@@ -43,16 +32,13 @@ const lowPreset: Preset = {
   bidMultiplier: 500,
   stepMin: 10000,
   bidDecimals: 1000,
-  hammerTimeDuration: 900,
 };
-
 const mediumPreset: Preset = {
   incMin: 500,
   incMax: 5000,
   bidMultiplier: 4970,
   stepMin: 5000,
   bidDecimals: 100000,
-  hammerTimeDuration: 900,
 };
 
 const highPreset: Preset = {
@@ -61,21 +47,10 @@ const highPreset: Preset = {
   bidMultiplier: 11000,
   stepMin: 10000,
   bidDecimals: 100000,
-  hammerTimeDuration: 900,
 };
 
 const gasPrice = 20000000000;
 
-const initInfo = {
-  startTime,
-  endTime,
-  hammerTimeDuration,
-  bidDecimals,
-  stepMin,
-  incMax,
-  incMin,
-  bidMultiplier,
-};
 export const presets: Preset[] = [lowPreset, mediumPreset, highPreset];
 export async function deployDiamond() {
   const accounts = await ethers.getSigners();
@@ -88,10 +63,12 @@ export async function deployDiamond() {
   console.log("DiamondCutFacet deployed:", diamondCutFacet.address);
 
   // deploy Diamond
-  const Diamond = await ethers.getContractFactory("Diamond");
+  const Diamond = await ethers.getContractFactory("GBMDiamond");
   const diamond = await Diamond.deploy(
     contractOwner.address,
     diamondCutFacet.address,
+    1200,
+    3600,
     { gasPrice: gasPrice }
   );
   await diamond.deployed();

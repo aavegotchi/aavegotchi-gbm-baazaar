@@ -19,12 +19,7 @@ import "../libraries/LibSignature.sol";
 /// @title GBM auction contract
 /// @dev See GBM.auction on how to use this contract
 /// @author Guillaume Gonnaud
-contract GBMFacet is
-    IGBM,
-    IERC1155TokenReceiver,
-    IERC721TokenReceiver,
-    Modifiers
-{
+contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifiers {
     error NoSecondaryMarket();
 
     error AuctionNotStarted();
@@ -66,16 +61,9 @@ contract GBMFacet is
         uint256 _tokenID,
         uint256 _amount,
         bytes memory _signature
-    )
-        external
-    {
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(msg.sender, _auctionID, _bidAmount, _highestBid)
-        );
-        require(
-            LibSignature.isValid(messageHash, _signature, s.backendPubKey),
-            "bid: Invalid signature"
-        );
+    ) external {
+        bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, _auctionID, _bidAmount, _highestBid));
+        require(LibSignature.isValid(messageHash, _signature, s.backendPubKey), "bid: Invalid signature");
 
         bid(_auctionID, _contractID, _tokenID, _amount, _bidAmount, _highestBid);
     }
@@ -91,9 +79,7 @@ contract GBMFacet is
         uint256 _amount,
         uint256 _bidAmount,
         uint256 _highestBid
-    )
-        internal
-    {
+    ) internal {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert NoAuction();
@@ -102,43 +88,28 @@ contract GBMFacet is
         if (a.biddingAllowed == false) revert BiddingNotAllowed();
         if (_bidAmount < 1) revert NoZeroBidAmount();
         //short-circuit
-        if (_highestBid != a.highestBid) revert UnmatchedHighestBid(
-            a.highestBid
-        );
+        if (_highestBid != a.highestBid) revert UnmatchedHighestBid(a.highestBid);
 
         //Verify onchain Auction Params
-        if (a.contractID != _contractID) revert InvalidAuctionParams(
-            "contractID"
-        );
+        if (a.contractID != _contractID) revert InvalidAuctionParams("contractID");
         if (a.info.tokenID != _tokenID) revert InvalidAuctionParams("tokenID");
         if (a.info.tokenAmount != _amount) revert InvalidAuctionParams("amount");
 
         //  if (_bidAmount <= _highestBid) revert HigherBidAmount(_highestBid);
 
         address tokenContract = s.secondaryMarketTokenContract[_contractID];
-        if (s.contractBiddingAllowed[tokenContract] == false) revert
-            BiddingNotAllowed();
+        if (s.contractBiddingAllowed[tokenContract] == false) revert BiddingNotAllowed();
 
         uint256 tmp = _highestBid * getAuctionBidDecimals(_auctionID);
 
-        if (
-            tmp
-                + getAuctionStepMin(_auctionID)
-                >= _bidAmount
-                * getAuctionBidDecimals(_auctionID)
-        ) revert MinBidNotMet();
+        if (tmp + getAuctionStepMin(_auctionID) >= _bidAmount * getAuctionBidDecimals(_auctionID)) revert MinBidNotMet();
 
         //Transfer the money of the bidder to the GBM Diamond
         IERC20(s.GHST).transferFrom(msg.sender, address(this), _bidAmount);
 
         //Extend the duration time of the auction if we are close to the end
-        if (
-            getAuctionEndTime(_auctionID)
-                < block.timestamp
-                + getAuctionHammerTimeDuration(_auctionID)
-        ) {
-            a.info.endTime =
-                uint80(block.timestamp + getAuctionHammerTimeDuration(_auctionID));
+        if (getAuctionEndTime(_auctionID) < block.timestamp + getAuctionHammerTimeDuration()) {
+            a.info.endTime = uint80(block.timestamp + getAuctionHammerTimeDuration());
             emit Auction_EndTimeUpdated(_auctionID, a.info.endTime);
         }
 
@@ -149,23 +120,18 @@ contract GBMFacet is
 
         // Emitting the event sequence
         if (previousHighestBidder != address(0)) {
-            emit Auction_BidRemoved(
-                _auctionID, previousHighestBidder, previousHighestBid
-                );
+            emit Auction_BidRemoved(_auctionID, previousHighestBidder, previousHighestBid);
         }
 
         if (duePay != 0) {
             s.auctions[_auctionID].auctionDebt = uint88(a.auctionDebt + duePay);
-            emit Auction_IncentivePaid(
-                _auctionID, previousHighestBidder, duePay
-                );
+            emit Auction_IncentivePaid(_auctionID, previousHighestBidder, duePay);
         }
 
         emit Auction_BidPlaced(_auctionID, msg.sender, _bidAmount);
 
         // Calculating incentives for the new bidder
-        s.auctions[_auctionID].dueIncentives =
-            uint88(calculateIncentives(_auctionID, _bidAmount));
+        s.auctions[_auctionID].dueIncentives = uint88(calculateIncentives(_auctionID, _bidAmount));
 
         //Setting the new bid/bidder as the highest bid/bidder
         s.auctions[_auctionID].highestBidder = msg.sender;
@@ -177,9 +143,7 @@ contract GBMFacet is
             //No need if using transfer()
             //  IERC20(s.GHST).approve(address(this), (previousHighestBid + duePay));
 
-            IERC20(s.GHST).transfer(
-                previousHighestBidder, previousHighestBid + duePay
-            );
+            IERC20(s.GHST).transfer(previousHighestBidder, previousHighestBid + duePay);
         }
     }
 
@@ -200,65 +164,32 @@ contract GBMFacet is
         Auction storage a = s.auctions[_auctionID];
         if (a.owner == address(0)) revert NoAuction();
         if (a.claimed == true) revert AuctionClaimed();
-        if (
-            a.info.endTime
-                + getAuctionHammerTimeDuration(_auctionID)
-                > block.timestamp
-        ) revert AuctionNotEnded(
-            a.info.endTime + getAuctionHammerTimeDuration(_auctionID)
-        );
+        if (a.info.endTime + getAuctionHammerTimeDuration() > block.timestamp)
+            revert AuctionNotEnded(a.info.endTime + getAuctionHammerTimeDuration());
         //only owner or highestBidder should caim
-        require(
-            msg.sender == a.highestBidder || msg.sender == a.owner,
-            "NotHighestBidderOrOwner"
-        );
+        require(msg.sender == a.highestBidder || msg.sender == a.owner, "NotHighestBidderOrOwner");
         address ca = s.secondaryMarketTokenContract[a.contractID];
         uint256 tid = a.info.tokenID;
         uint256 tam = a.info.tokenAmount;
 
         //Prevents re-entrancy
         a.claimed = true;
-
-        //Todo: Add in the various Aavegotchi addresses
         uint256 _proceeds = a.highestBid - a.auctionDebt;
-
-        //Added to prevent revert
-        //IERC20(s.GHST).approve(address(this), _proceeds);
-
-        //Transfer the proceeds to the various recipients
-        //TODO: DEFINE FEE PERCENTAGES
-        //5% to burn address
-        /**
-        uint256 burnShare = (_proceeds * 5) / 100;
-
-        //40% to Pixelcraft wallet
-        uint256 companyShare = (_proceeds * 40) / 100;
-
-        //40% to player rewards
-        uint256 playerRewardsShare = (_proceeds * 2) / 5;
-
-        //15% to DAO
-        uint256 daoShare = (_proceeds - burnShare - companyShare - playerRewardsShare);
-
-        IERC20(s.GHST).transfer(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF), burnShare);
-        IERC20(s.GHST).transfer(s.pixelcraft, companyShare);
-        IERC20(s.GHST).transfer(s.playerRewards, playerRewardsShare);
-        IERC20(s.GHST).transfer(s.daoTreasury, daoShare);*/
         //96% goes to auction owner
-        uint256 ownerShare = _proceeds * 96 / 100;
+        uint256 ownerShare = (_proceeds * 96) / 100;
         IERC20(s.GHST).transfer(a.owner, ownerShare);
 
-        //1% goes to pixelcraft
-        uint256 pixelcraftShare = _proceeds * 1 / 100;
+        //1.5% goes to pixelcraft
+        uint256 pixelcraftShare = (_proceeds * 15) / 1000;
         IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
         //1% goes to GBM
-        uint256 GBM = _proceeds * 1 / 100;
+        uint256 GBM = (_proceeds * 1) / 100;
         IERC20(s.GHST).transfer(s.GBMAddress, GBM);
         //1% goes to Treasury
-        uint256 Treasury = _proceeds * 1 / 100;
+        uint256 Treasury = (_proceeds * 1) / 100;
         IERC20(s.GHST).transfer(s.Treasury, Treasury);
         //0.5% goes to DAO
-        uint256 DAO = _proceeds * 5 / 1000;
+        uint256 DAO = (_proceeds * 5) / 1000;
         IERC20(s.GHST).transfer(s.DAO, DAO);
 
         if (a.info.tokenKind == ERC721) {
@@ -279,26 +210,18 @@ contract GBMFacet is
     /// @notice Allow/disallow bidding and claiming for a whole token contract address.
     /// @param _contract The token contract the auctionned token belong to
     /// @param _value True if bidding/claiming should be allowed.
-    function setBiddingAllowed(address _contract, bool _value)
-        external
-        onlyOwner
-    {
+    function setBiddingAllowed(address _contract, bool _value) external onlyOwner {
         s.contractBiddingAllowed[_contract] = _value;
         emit Contract_BiddingAllowed(_contract, _value);
     }
 
-    function enableContract(uint256 _contractID, address _tokenContract)
-        external
-        onlyOwner
-    {
-        if (s.secondaryMarketTokenContract[_contractID] != address(0)) revert
-            ContractEnabledAlready();
+    function enableContract(uint256 _contractID, address _tokenContract) external onlyOwner {
+        if (s.secondaryMarketTokenContract[_contractID] != address(0)) revert ContractEnabledAlready();
         s.secondaryMarketTokenContract[_contractID] = _tokenContract;
     }
 
     function disableContract(uint256 _contractID) external onlyOwner {
-        if (s.secondaryMarketTokenContract[_contractID] == address(0)) revert
-            ContractDisabledAlready();
+        if (s.secondaryMarketTokenContract[_contractID] == address(0)) revert ContractDisabledAlready();
         s.secondaryMarketTokenContract[_contractID] = address(0);
     }
 
@@ -306,12 +229,8 @@ contract GBMFacet is
         InitiatorInfo calldata _info,
         uint160 _contractID,
         uint256 _auctionPresetID
-    )
-        external
-        returns (uint256)
-    {
-        if (s.auctionPresets[_auctionPresetID].incMin < 1) revert
-            UndefinedPreset();
+    ) external returns (uint256) {
+        if (s.auctionPresets[_auctionPresetID].incMin < 1) revert UndefinedPreset();
         uint256 id = _info.tokenID;
         uint256 amount = _info.tokenAmount;
         address ca = s.secondaryMarketTokenContract[_contractID];
@@ -322,36 +241,20 @@ contract GBMFacet is
         _validateInitialAuction(_info);
         if (tokenKind == ERC721) {
             if (s.erc721AuctionExists[ca][id] != false) revert AuctionExists();
-            if (
-                Ownable(ca).ownerOf(id)
-                    == address(0)
-                    || msg.sender
-                    != Ownable(ca).ownerOf(id)
-            ) revert NotTokenOwner();
+            if (Ownable(ca).ownerOf(id) == address(0) || msg.sender != Ownable(ca).ownerOf(id)) revert NotTokenOwner();
             //transfer Token
             IERC721(ca).safeTransferFrom(msg.sender, address(this), id);
             //register onchain after successfull transfer
-            _aid = uint256(
-                keccak256(
-                    abi.encodePacked(ca, id, tokenKind, block.timestamp, amount, msg.sender)
-                )
-            );
+            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.timestamp, amount, msg.sender)));
             amount = 1;
             s.erc721AuctionExists[ca][id] = true;
         }
         if (tokenKind == ERC1155) {
             uint256 index = s.erc1155AuctionIndexes[ca][id][amount];
-            if (IERC1155(ca).balanceOf(msg.sender, id) < amount) revert
-                InsufficientToken();
+            if (IERC1155(ca).balanceOf(msg.sender, id) < amount) revert InsufficientToken();
             //transfer Token
-            IERC1155(ca).safeTransferFrom(
-                msg.sender, address(this), id, amount, ""
-            );
-            _aid = uint256(
-                keccak256(
-                    abi.encodePacked(ca, id, tokenKind, block.timestamp, index, amount, msg.sender)
-                )
-            );
+            IERC1155(ca).safeTransferFrom(msg.sender, address(this), id, amount, "");
+            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.timestamp, index, amount, msg.sender)));
             unchecked {
                 s.erc1155AuctionIndexes[ca][id][amount]++;
             }
@@ -366,12 +269,8 @@ contract GBMFacet is
         a.biddingAllowed = true;
         //for recurring auction creations
         //   a.claimed = false;
-        emit Auction_Initialized(
-            _aid, id, amount, ca, tokenKind, _auctionPresetID
-            );
-        emit Auction_StartTimeUpdated(
-            _aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid)
-            );
+        emit Auction_Initialized(_aid, id, amount, ca, tokenKind, _auctionPresetID);
+        emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
         return _aid;
     }
 
@@ -380,9 +279,7 @@ contract GBMFacet is
         uint80 _newEndTime,
         uint64 _newTokenAmount,
         bytes4 _tokenKind
-    )
-        external
-    {
+    ) external {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert NoAuction();
@@ -397,11 +294,9 @@ contract GBMFacet is
         if (a.highestBid > 0) revert ModifyAuctionError();
         //If the end time is being changed
         if (a.info.endTime != _newEndTime) {
-            if (
-                block.timestamp >= _newEndTime || a.info.startTime >= _newEndTime
-            ) revert EndTimeTooLow();
+            if (block.timestamp >= _newEndTime || a.info.startTime >= _newEndTime) revert EndTimeTooLow();
             uint256 duration = _newEndTime - a.info.startTime;
-            //max time should not be grater than 7 days
+            //max time should not be greater than 7 days
             if (duration > 604800) revert DurationTooHigh();
         }
         if (_tokenKind == ERC721) {
@@ -417,9 +312,7 @@ contract GBMFacet is
             if (currentAmount < _newTokenAmount) {
                 diff = _newTokenAmount - currentAmount;
                 //retrieve Token
-                IERC1155(ca).safeTransferFrom(
-                    msg.sender, address(this), a.info.tokenID, diff, ""
-                );
+                IERC1155(ca).safeTransferFrom(msg.sender, address(this), a.info.tokenID, diff, "");
                 // update storage
                 a.info.tokenAmount = _newTokenAmount;
                 unchecked {
@@ -442,13 +335,8 @@ contract GBMFacet is
         }
     }
 
-    function _validateInitialAuction(InitiatorInfo memory _info)
-        internal
-        view
-    {
-        if (
-            _info.startTime < block.timestamp || _info.startTime >= _info.endTime
-        ) revert StartOrEndTimeTooLow();
+    function _validateInitialAuction(InitiatorInfo memory _info) internal view {
+        if (_info.startTime < block.timestamp || _info.startTime >= _info.endTime) revert StartOrEndTimeTooLow();
         uint256 duration = _info.endTime - _info.startTime;
         if (duration < 3600) revert DurationTooLow();
         if (duration > 604800) revert DurationTooHigh();
@@ -460,18 +348,12 @@ contract GBMFacet is
         bytes4 _tokenKind,
         uint256 _tokenID,
         uint256 _amount
-    )
-        internal
-    {
+    ) internal {
         if (_tokenKind == ERC721) {
-            IERC721(_contract).safeTransferFrom(
-                address(this), _recipient, _tokenID, ""
-            );
+            IERC721(_contract).safeTransferFrom(address(this), _recipient, _tokenID, "");
         }
         if (_tokenKind == ERC1155) {
-            IERC1155(_contract).safeTransferFrom(
-                address(this), _recipient, _tokenID, _amount, ""
-            );
+            IERC1155(_contract).safeTransferFrom(address(this), _recipient, _tokenID, _amount, "");
         }
     }
 
@@ -484,20 +366,14 @@ contract GBMFacet is
         if (a.owner == address(0)) revert NoAuction();
         //verify ownership
         if (a.owner != msg.sender) revert NotAuctionOwner();
-        if (a.info.endTime > block.timestamp) revert AuctionNotEnded(
-            getAuctionEndTime(_auctionID)
-        );
+        if (a.info.endTime > block.timestamp) revert AuctionNotEnded(getAuctionEndTime(_auctionID));
         //check if not claimed
         if (a.claimed == true) revert AuctionClaimed();
 
         address ca = s.secondaryMarketTokenContract[a.contractID];
         uint256 tid = a.info.tokenID;
         uint256 tam = a.info.tokenAmount;
-        if (
-            getAuctionEndTime(_auctionID)
-                + getAuctionHammerTimeDuration(_auctionID)
-                < block.timestamp
-        ) revert CancellationTimeExceeded();
+        if (getAuctionEndTime(_auctionID) + s.cancellationTime < block.timestamp) revert CancellationTimeExceeded();
         a.claimed = true;
         // case where no bids have been made
         if (a.highestBid == 0) {
@@ -519,30 +395,26 @@ contract GBMFacet is
         if (a.highestBid > 0) {
             uint256 _proceeds = a.highestBid - a.auctionDebt;
             //Fees of pixelcraft,GBM,DAO and Treasury
-            uint256 _auctionFees = _proceeds * 4 / 100;
+            uint256 _auctionFees = (_proceeds * 4) / 100;
 
             //Send the debt + his due incentives from the seller to the highest bidder
-            IERC20(s.GHST).transferFrom(
-                a.owner,
-                address(this),
-                _auctionFees + a.dueIncentives + a.auctionDebt
-            );
+            IERC20(s.GHST).transferFrom(a.owner, address(this), _auctionFees + a.dueIncentives + a.auctionDebt);
 
             //Refund it's bid plus his incentives to the highest bidder
             uint256 ownerShare = _proceeds + a.auctionDebt + a.dueIncentives;
             IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
 
             //1.5% goes to pixelcraft
-            uint256 pixelcraftShare = _proceeds * 15 / 1000;
+            uint256 pixelcraftShare = (_proceeds * 15) / 1000;
             IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
             //1% goes to GBM
-            uint256 GBM = _proceeds * 1 / 100;
+            uint256 GBM = (_proceeds * 1) / 100;
             IERC20(s.GHST).transfer(s.GBMAddress, GBM);
             //0.5% to DAO
-            uint256 DAO = _proceeds * 5 / 1000;
+            uint256 DAO = (_proceeds * 5) / 1000;
             IERC20(s.GHST).transfer(s.DAO, DAO);
             //1% to treasury
-            uint256 Treasury = _proceeds * 1 / 100;
+            uint256 Treasury = (_proceeds * 1) / 100;
             IERC20(s.GHST).transfer(s.Treasury, Treasury);
 
             // Transfer the token to the owner/canceller
@@ -565,69 +437,35 @@ contract GBMFacet is
 
     /// @notice Register parameters of auction to be used as presets
     /// Throw if the token owner is not the GBM smart contract
-    function setAuctionPresets(
-        uint256 _auctionPresetID,
-        Preset calldata _preset
-    )
-        external
-        onlyOwner
-    {
+    function setAuctionPresets(uint256 _auctionPresetID, Preset calldata _preset) external onlyOwner {
         s.auctionPresets[_auctionPresetID] = _preset;
     }
 
-    function getAuctionPresets(uint256 _auctionPresetID)
-        public
-        view
-        returns (Preset memory presets_)
-    {
+    function getAuctionPresets(uint256 _auctionPresetID) public view returns (Preset memory presets_) {
         presets_ = s.auctionPresets[_auctionPresetID];
     }
 
-    function getAuctionInfo(uint256 _auctionID)
-        external
-        view
-        returns (Auction memory auctionInfo_)
-    {
+    function getAuctionInfo(uint256 _auctionID) external view returns (Auction memory auctionInfo_) {
         auctionInfo_ = s.auctions[_auctionID];
     }
 
-    function getAuctionHighestBidder(uint256 _auctionID)
-        external
-        view
-        returns (address)
-    {
+    function getAuctionHighestBidder(uint256 _auctionID) external view returns (address) {
         return s.auctions[_auctionID].highestBidder;
     }
 
-    function getAuctionHighestBid(uint256 _auctionID)
-        external
-        view
-        returns (uint256)
-    {
+    function getAuctionHighestBid(uint256 _auctionID) external view returns (uint256) {
         return s.auctions[_auctionID].highestBid;
     }
 
-    function getAuctionDebt(uint256 _auctionID)
-        external
-        view
-        returns (uint256)
-    {
+    function getAuctionDebt(uint256 _auctionID) external view returns (uint256) {
         return s.auctions[_auctionID].auctionDebt;
     }
 
-    function getAuctionDueIncentives(uint256 _auctionID)
-        external
-        view
-        returns (uint256)
-    {
+    function getAuctionDueIncentives(uint256 _auctionID) external view returns (uint256) {
         return s.auctions[_auctionID].dueIncentives;
     }
 
-    function getTokenKind(uint256 _auctionID)
-        external
-        view
-        returns (bytes4)
-    {
+    function getTokenKind(uint256 _auctionID) external view returns (bytes4) {
         return s.auctions[_auctionID].info.tokenKind;
     }
 
@@ -635,75 +473,39 @@ contract GBMFacet is
         return s.auctions[_auctionID].info.tokenID;
     }
 
-    function getContractAddress(uint256 _auctionID)
-        external
-        view
-        returns (address)
-    {
+    function getContractAddress(uint256 _auctionID) external view returns (address) {
         return s.secondaryMarketTokenContract[s.auctions[_auctionID].contractID];
     }
 
-    function getAuctionStartTime(uint256 _auctionID)
-        public
-        view
-        returns (uint256)
-    {
+    function getAuctionStartTime(uint256 _auctionID) public view returns (uint256) {
         return s.auctions[_auctionID].info.startTime;
     }
 
-    function getAuctionEndTime(uint256 _auctionID)
-        public
-        view
-        returns (uint256)
-    {
+    function getAuctionEndTime(uint256 _auctionID) public view returns (uint256) {
         return s.auctions[_auctionID].info.endTime;
     }
 
-    function getAuctionHammerTimeDuration(uint256 _auctionID)
-        public
-        view
-        returns (uint256)
-    {
-        return s.auctions[_auctionID].presets.hammerTimeDuration;
+    function getAuctionHammerTimeDuration() public view returns (uint256) {
+        return s.hammerTimeDuration;
     }
 
-    function getAuctionBidDecimals(uint256 _auctionID)
-        public
-        view
-        returns (uint256)
-    {
+    function getAuctionBidDecimals(uint256 _auctionID) public view returns (uint256) {
         return s.auctions[_auctionID].presets.bidDecimals;
     }
 
-    function getAuctionStepMin(uint256 _auctionID)
-        public
-        view
-        returns (uint256)
-    {
+    function getAuctionStepMin(uint256 _auctionID) public view returns (uint256) {
         return s.auctions[_auctionID].presets.stepMin;
     }
 
-    function getAuctionIncMin(uint256 _auctionID)
-        public
-        view
-        returns (uint256)
-    {
+    function getAuctionIncMin(uint256 _auctionID) public view returns (uint256) {
         return s.auctions[_auctionID].presets.incMin;
     }
 
-    function getAuctionIncMax(uint256 _auctionID)
-        public
-        view
-        returns (uint256)
-    {
+    function getAuctionIncMax(uint256 _auctionID) public view returns (uint256) {
         return s.auctions[_auctionID].presets.incMax;
     }
 
-    function getAuctionBidMultiplier(uint256 _auctionID)
-        public
-        view
-        returns (uint256)
-    {
+    function getAuctionBidMultiplier(uint256 _auctionID) public view returns (uint256) {
         return s.auctions[_auctionID].presets.bidMultiplier;
     }
 
@@ -716,12 +518,7 @@ contract GBMFacet is
         address, /*  _from */
         uint256, /*  _tokenId */
         bytes calldata /* _data */
-    )
-        external
-        pure
-        override
-        returns (bytes4)
-    {
+    ) external pure override returns (bytes4) {
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
@@ -731,15 +528,8 @@ contract GBMFacet is
         uint256, /* _id */
         uint256, /* _value */
         bytes calldata /* _data */
-    )
-        external
-        pure
-        override
-        returns (bytes4)
-    {
-        return bytes4(
-            keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")
-        );
+    ) external pure override returns (bytes4) {
+        return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
     }
 
     function onERC1155BatchReceived(
@@ -748,30 +538,18 @@ contract GBMFacet is
         uint256[] calldata, /* _ids */
         uint256[] calldata, /* _values */
         bytes calldata /* _data */
-    )
-        external
-        pure
-        override
-        returns (bytes4)
-    {
-        return bytes4(
-            keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)")
-        );
+    ) external pure override returns (bytes4) {
+        return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));
     }
 
     /// @notice Calculating and setting how much payout a bidder will receive if outbid
     /// @dev Only callable internally
-    function calculateIncentives(uint256 _auctionID, uint256 _newBidValue)
-        internal
-        view
-        returns (uint256)
-    {
+    function calculateIncentives(uint256 _auctionID, uint256 _newBidValue) internal view returns (uint256) {
         uint256 bidDecimals = getAuctionBidDecimals(_auctionID);
         uint256 bidIncMax = getAuctionIncMax(_auctionID);
 
         //Init the baseline bid we need to perform against
-        uint256 baseBid = s.auctions[_auctionID].highestBid
-            * (bidDecimals + getAuctionStepMin(_auctionID)) / bidDecimals;
+        uint256 baseBid = (s.auctions[_auctionID].highestBid * (bidDecimals + getAuctionStepMin(_auctionID))) / bidDecimals;
 
         //If no bids are present, set a basebid value of 1 to prevent divide by 0 errors
         if (baseBid == 0) {
@@ -779,17 +557,16 @@ contract GBMFacet is
         }
 
         //Ratio of newBid compared to expected minBid
-        uint256 decimaledRatio = bidDecimals
-            * getAuctionBidMultiplier(_auctionID)
-            * (_newBidValue - baseBid) / baseBid
-            + getAuctionIncMin(_auctionID)
-            * bidDecimals;
+        uint256 decimaledRatio = (bidDecimals * getAuctionBidMultiplier(_auctionID) * (_newBidValue - baseBid)) /
+            baseBid +
+            getAuctionIncMin(_auctionID) *
+            bidDecimals;
 
         if (decimaledRatio > bidDecimals * bidIncMax) {
             decimaledRatio = bidDecimals * bidIncMax;
         }
 
-        return _newBidValue * decimaledRatio / (bidDecimals * bidDecimals);
+        return (_newBidValue * decimaledRatio) / (bidDecimals * bidDecimals);
     }
 
     //mock calls
@@ -797,11 +574,11 @@ contract GBMFacet is
         return s.backendPubKey;
     }
 
-    function checkIndex(address _contract, uint256 id, uint256 amount)
-        public
-        view
-        returns (uint256)
-    {
+    function checkIndex(
+        address _contract,
+        uint256 id,
+        uint256 amount
+    ) public view returns (uint256) {
         return s.erc1155AuctionIndexes[_contract][id][amount];
     }
 

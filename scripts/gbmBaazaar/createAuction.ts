@@ -38,16 +38,16 @@ async function createAndBid() {
   gbm = (await ethers.getContractAt(
     "GBMFacet",
     GBMDiamondAddress,
-    signers[2]
+    signers[0]
   )) as GBMFacet;
 
-  // const auctionDetails = {
-  //   startTime: Math.floor(Date.now() / 1000 + 200),
-  //   endTime: Math.floor(Date.now() / 1000) + 8640,
-  //   tokenAmount: 1,
-  //   tokenKind: "0x73ad2146", //ERC721
-  //   tokenID: "13",
-  // };
+  const auctionDetails = {
+    startTime: Math.floor(Date.now() / 1000 + 200),
+    endTime: Math.floor(Date.now() / 1000) + 8640,
+    tokenAmount: 1,
+    tokenKind: "0x73ad2146", //ERC721
+    tokenID: "15",
+  };
 
   // const auctionDetails2 = {
   //   startTime: Math.floor(Date.now() / 1000 + 200),
@@ -58,14 +58,14 @@ async function createAndBid() {
   // };
 
   // //create an auction
-  // console.log("creating auction");
+  console.log("creating auction");
 
-  // const tx1 = await gbm.createAuction(auctionDetails, 10, 2);
-  // //get auction id
-  // const txResolved = await tx1.wait();
-  // const events = txResolved.events.find(
-  //   (event) => event.event === "Auction_Initialized"
-  // );
+  const tx1 = await gbm.createAuction(auctionDetails, 10, 2);
+  //get auction id
+  const txResolved = await tx1.wait();
+  const events = txResolved.events.find(
+    (event) => event.event === "Auction_Initialized"
+  );
   // let [
   //   _auctionID,
   //   _tokenID,
@@ -104,8 +104,8 @@ async function createAndBid() {
 
   // //BIDDING
   // // bid with a second account
-  const bidAmount = "1000000000000000000";
-  const outBidAmount = "10000000000000000000";
+  // const bidAmount = "1000000000000000000";
+  // const outBidAmount = "10000000000000000000";
   // const signer2 = new ethers.Wallet(PK2);
   // const sig = await constructSig(
   //   signers[1].address,
@@ -114,16 +114,16 @@ async function createAndBid() {
   //   "0",
   //   acc
   // );
-  id = BigNumber.from(
-    "43148439529833925993239019604143256993101919946179241450736054784227302974423"
-  );
-  const sig2 = await constructSig(
-    signers[2].address,
-    id.toString(),
-    outBidAmount,
-    bidAmount,
-    acc
-  );
+  // id = BigNumber.from(
+  //   "43148439529833925993239019604143256993101919946179241450736054784227302974423"
+  // );
+  // const sig2 = await constructSig(
+  //   signers[2].address,
+  //   id.toString(),
+  //   outBidAmount,
+  //   bidAmount,
+  //   acc
+  // );
   // // console.log(sig);
 
   // gbm = (await ethers.getContractAt(

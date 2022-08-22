@@ -33,8 +33,7 @@ struct Preset {
     uint64 incMax;
     uint64 bidMultiplier;
     uint64 stepMin;
-    uint240 bidDecimals;
-    uint16 hammerTimeDuration;
+    uint256 bidDecimals;
 }
 
 struct Auction {
@@ -50,18 +49,6 @@ struct Auction {
     Preset presets;
 }
 
-// struct Collection {
-//     uint256 startTime;
-//     uint256 endTime;
-//     uint256 hammerTimeDuration;
-//     uint256 bidDecimals;
-//     uint256 stepMin;
-//     uint256 incMin; // minimal earned incentives
-//     uint256 incMax; // maximal earned incentives
-//     uint256 bidMultiplier; // bid incentive growth multiplier
-//     bool biddingAllowed; // Allow to start/pause ongoing auctions
-// }
-
 struct AppStorage {
     address pixelcraft;
     address DAO;
@@ -73,10 +60,11 @@ struct AppStorage {
     mapping(address => mapping(uint256 => uint256)) erc1155TokensIndex; //Contract => TokenID => Amount being auctionned
     bytes backendPubKey;
     mapping(address => mapping(uint256 => bool)) erc721AuctionExists; //Contract => TokenID => Existence
-    mapping(address => mapping(uint256 => mapping(uint256 => uint256)))
-        erc1155AuctionIndexes; //Contract=>TokenID=>Amount=>maxIndex;
+    mapping(address => mapping(uint256 => mapping(uint256 => uint256))) erc1155AuctionIndexes; //Contract=>TokenID=>Amount=>maxIndex;
     mapping(uint256 => Preset) auctionPresets; // presestID => Configuration parameters
     mapping(uint256 => address) secondaryMarketTokenContract; //tokenContractId => Token contract address
+    uint128 hammerTimeDuration;
+    uint128 cancellationTime;
 }
 
 contract Modifiers {

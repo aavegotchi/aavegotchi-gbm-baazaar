@@ -10,25 +10,19 @@ abstract contract TestHelpers is DSTest {
         uint256 _bidAmount,
         uint256 lastHighestBid,
         uint256 privKey
-    )
-        public
-        returns (bytes memory sig)
-    {
-        bytes32 mHash = keccak256(
-            abi.encodePacked(bidder, _auctionID, _bidAmount, lastHighestBid)
-        );
-        mHash =
-            keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", mHash));
+    ) public returns (bytes memory sig) {
+        bytes32 mHash = keccak256(abi.encodePacked(bidder, _auctionID, _bidAmount, lastHighestBid));
+        mHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", mHash));
         //  emit log_bytes32(mHash);
         (uint8 v, bytes32 r, bytes32 s) = cheat.sign(privKey, mHash);
         sig = getSig(v, r, s);
     }
 
-    function getSig(uint8 v, bytes32 r, bytes32 s)
-        public
-        pure
-        returns (bytes memory sig)
-    {
+    function getSig(
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public pure returns (bytes memory sig) {
         sig = bytes.concat(r, s, bytes1(v));
     }
 
@@ -37,11 +31,7 @@ abstract contract TestHelpers is DSTest {
         require(ss.length % 2 == 0); // length must be even
         bytes memory r = new bytes(ss.length / 2);
         for (uint256 i = 0; i < ss.length / 2; ++i) {
-            r[i] = bytes1(
-                fromHexChar(uint8(ss[2 * i]))
-                    * 16
-                    + fromHexChar(uint8(ss[2 * i + 1]))
-            );
+            r[i] = bytes1(fromHexChar(uint8(ss[2 * i])) * 16 + fromHexChar(uint8(ss[2 * i + 1])));
         }
         return r;
     }

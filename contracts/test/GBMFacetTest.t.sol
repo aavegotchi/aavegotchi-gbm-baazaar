@@ -1,4 +1,4 @@
-import {Diamond} from "../Diamond.sol";
+import {GBMDiamond} from "../GBMDiamond.sol";
 import {DiamondInit} from "../upgradeInitializers/DiamondInit.sol";
 import {GBMFacet} from "../facets/GBMFacet.sol";
 import {DiamondCutFacet} from "../facets/DiamondCutFacet.sol";
@@ -18,7 +18,7 @@ import "../libraries/LibSignature.sol";
 contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
     DiamondCutFacet dcut;
     GBMFacet gFacet;
-    Diamond diamond;
+    GBMDiamond diamond;
     DiamondInit dInit;
     DiamondLoupeFacet dLoupe;
     OwnershipFacet ownerF;
@@ -62,7 +62,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         //deploy diamondCut
         dcut = new DiamondCutFacet();
         //deploy diamond
-        diamond = new Diamond(0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84, address(dcut));
+        diamond = new GBMDiamond(0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84, address(dcut), 20 minutes, 1 hours);
         //deploy diamondInit
         dInit = new DiamondInit();
         gFacet = new GBMFacet();
@@ -111,7 +111,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         //set a preset
         //using highest preset
-        GBMFacet(address(diamond)).setAuctionPresets(0, Preset(1500, 15000, 18270, 15000, 100000, 900));
+        GBMFacet(address(diamond)).setAuctionPresets(0, Preset(1500, 15000, 18270, 15000, 100000));
         cheat.expectRevert(GBMFacet.NoSecondaryMarket.selector);
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 1 days, uint64(1), bytes4(ERC721), 1),
@@ -310,33 +310,35 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         //can't claim an ongoing auction
         cheat.expectRevert(
-            abi.encodeWithSelector(GBMFacet.AuctionNotEnded.selector, GBMFacet(address(diamond)).getAuctionEndTime(erc721Auction) + 900)
+            abi.encodeWithSelector(GBMFacet.AuctionNotEnded.selector, GBMFacet(address(diamond)).getAuctionEndTime(erc721Auction) + 1200)
         );
         GBMFacet(address(diamond)).claim(erc721Auction);
         uint256 oldEndTime = GBMFacet(address(diamond)).getAuctionEndTime(erc1155Auction);
         //can't claim for someone else
         cheat.expectRevert("NotHighestBidderOrOwner");
         cheat.startPrank(bidder2);
-        cheat.warp(block.timestamp + 3 days + 15 minutes);
+        cheat.warp(block.timestamp + 3 days + 20 minutes);
         GBMFacet(address(diamond)).claim(erc721Auction);
 
         //make sure bidding during hammertime extends duration
-        cheat.warp(block.timestamp - 15 minutes);
+        cheat.warp(block.timestamp - 20 minutes);
         //bid again during hammer time with bidder2
         sig = constructSig(bidder2, erc1155Auction, 200e18, 150e18, bidder2priv);
         GBMFacet(address(diamond)).commitBid(erc1155Auction, 200e18, 150e18, 11, 0, 3, sig);
         uint256 newEndTime = GBMFacet(address(diamond)).getAuctionEndTime(erc1155Auction);
-        //make sure endTime is extended by 15minutes
-        assertEq(newEndTime, oldEndTime + 15 minutes);
+        //make sure endTime is extended by 20minutes
+        assertEq(newEndTime, oldEndTime + 20 minutes);
         cheat.stopPrank();
         //claim erc721 auction
-        cheat.warp(block.timestamp + 15 minutes);
+        cheat.warp(block.timestamp + 20 minutes);
         cheat.startPrank(bidder3);
         //erc1155 auction outbid by bidder3
-        //which also extends duration by 15 minutes
+        //which also extends duration by 20 minutes
         sig = constructSig(bidder3, erc1155Auction, 250e18, 200e18, bidder2priv);
         GBMFacet(address(diamond)).commitBid(erc1155Auction, 250e18, 200e18, 11, 0, 3, sig);
-        cheat.warp(block.timestamp + 30 minutes);
+        GBMFacet(address(diamond)).getAuctionEndTime(erc1155Auction);
+        //since auction has been extended twice
+        cheat.warp(block.timestamp + 40 minutes);
         GBMFacet(address(diamond)).claim(erc721Auction);
         assertEq(erc721.ownerOf(1), bidder3);
 
@@ -408,10 +410,16 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         cheat.stopPrank();
 
-        //jump to a time between endTime and hammer time
-        cheat.warp(block.timestamp + 3 days + 100);
+        GBMFacet(address(diamond)).getAuctionEndTime(erc721Auction2);
+        cheat.warp(block.timestamp + 3 days + 3601);
+        //can't cancel auction after cancellation time
+        cheat.expectRevert(GBMFacet.CancellationTimeExceeded.selector);
+        GBMFacet(address(diamond)).cancelAuction(erc721Auction2);
 
-        cheat.stopPrank();
+        //jump to a time between endTime+ cancellation time
+        cheat.warp(block.timestamp - 1400);
+
+        //  cheat.stopPrank();
         GBMFacet(address(diamond)).cancelAuction(erc721Auction2);
         cheat.prank(bidder3);
         cheat.expectRevert(GBMFacet.AuctionClaimed.selector);
