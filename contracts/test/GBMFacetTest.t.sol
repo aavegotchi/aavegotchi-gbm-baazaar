@@ -300,19 +300,23 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         GBMFacet(address(diamond)).claim(100);
 
         //can't claim an ongoing auction
+        //auction should have passed hammerTime + cancellationTime
         cheat.expectRevert(
-            abi.encodeWithSelector(GBMFacet.AuctionNotEnded.selector, GBMFacet(address(diamond)).getAuctionEndTime(erc721Auction) + 1200)
+            abi.encodeWithSelector(
+                GBMFacet.ClaimNotReady.selector,
+                GBMFacet(address(diamond)).getAuctionEndTime(erc721Auction) + 20 minutes + 1 hours
+            )
         );
         GBMFacet(address(diamond)).claim(erc721Auction);
         uint256 oldEndTime = GBMFacet(address(diamond)).getAuctionEndTime(erc1155Auction);
         //can't claim for someone else
         cheat.expectRevert("NotHighestBidderOrOwner");
         cheat.startPrank(bidder2);
-        cheat.warp(block.timestamp + 3 days + 20 minutes);
+        cheat.warp(block.timestamp + 3 days + 20 minutes + 1 hours);
         GBMFacet(address(diamond)).claim(erc721Auction);
 
         //make sure bidding during hammertime extends duration
-        cheat.warp(block.timestamp - 20 minutes);
+        cheat.warp(block.timestamp - 20 minutes - 1 hours);
         //bid again during hammer time with bidder2
         sig = constructSig(bidder2, erc1155Auction, 200e18, 150e18, bidder2priv);
         GBMFacet(address(diamond)).commitBid(erc1155Auction, 200e18, 150e18, 11, 0, 3, sig);
@@ -329,7 +333,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         GBMFacet(address(diamond)).commitBid(erc1155Auction, 250e18, 200e18, 11, 0, 3, sig);
         GBMFacet(address(diamond)).getAuctionEndTime(erc1155Auction);
         //since auction has been extended twice
-        cheat.warp(block.timestamp + 40 minutes);
+        cheat.warp(block.timestamp + 40 minutes + 1 hours);
         GBMFacet(address(diamond)).claim(erc721Auction);
         assertEq(erc721.ownerOf(1), bidder3);
 
