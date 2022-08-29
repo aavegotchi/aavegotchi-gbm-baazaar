@@ -188,14 +188,13 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
             11,
             0
         );
-        assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 3), 1);
+
         //creating another auction(with same token,id and amount) should increment index
         erc1155Auction2 = GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(3), bytes4(ERC1155), 0),
             11,
             0
         );
-        assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 3), 2);
 
         //allow bidding for token contracts
         GBMFacet(address(diamond)).setBiddingAllowed(address(erc721), true);
@@ -244,19 +243,11 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         GBMFacet(address(diamond)).modifyAuction(erc1155Auction, uint80(block.timestamp) + 3 days, uint64(2), bytes4(ERC1155));
         //auction creator should be refunded 1 token
         assertEq(erc1155.balanceOf(address(this), 0), 2);
-        //index for 3 tokens should be reduced
-        assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 3), 1);
-        //index for 2 tokens should be added
-        assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 2), 1);
 
         //modify auction by increasing to 4 tokens
         GBMFacet(address(diamond)).modifyAuction(erc1155Auction, uint80(block.timestamp) + 3 days, uint64(4), bytes4(ERC1155));
         //auction creator should have 1 token left
         assertEq(erc1155.balanceOf(address(this), 0), 0);
-        //index for 2 tokens should be reduced
-        assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 2), 0);
-        //index for 4 tokens should be added
-        assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 4), 1);
     }
 
     function testAuctionBidsAndClaim() public {
@@ -345,8 +336,6 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         //claim erc1155 auction
         //this time owner claims
         GBMFacet(address(diamond)).claim(erc1155Auction);
-        //reduce index for erc1155 auction
-        assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 4), 0);
 
         //can't claim already claimed auction
         cheat.expectRevert(GBMFacet.AuctionClaimed.selector);
@@ -431,9 +420,6 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         cheat.prank(bidder3);
         cheat.expectRevert(GBMFacet.AuctionClaimed.selector);
         GBMFacet(address(diamond)).claim(erc1155Auction2);
-
-        //confirm that index decreases
-        assertEq(GBMFacet(address(diamond)).checkIndex(address(erc1155), 0, 1), 0);
     }
 
     function diamondCut(

@@ -178,19 +178,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         //96% goes to auction owner
         uint256 ownerShare = (_proceeds * 96) / 100;
         IERC20(s.GHST).transfer(a.owner, ownerShare);
-
-        //1.5% goes to pixelcraft
-        uint256 pixelcraftShare = (_proceeds * 15) / 1000;
-        IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
-        //1% goes to GBM
-        uint256 GBM = (_proceeds * 1) / 100;
-        IERC20(s.GHST).transfer(s.GBMAddress, GBM);
-        //1% goes to Treasury
-        uint256 Treasury = (_proceeds * 1) / 100;
-        IERC20(s.GHST).transfer(s.Treasury, Treasury);
-        //0.5% goes to DAO
-        uint256 DAO = (_proceeds * 5) / 1000;
-        IERC20(s.GHST).transfer(s.DAO, DAO);
+        _settleFees(_proceeds);
 
         if (a.info.tokenKind == ERC721) {
             _sendTokens(ca, a.highestBidder, ERC721, tid, 1);
@@ -198,10 +186,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
         if (a.info.tokenKind == ERC1155) {
             _sendTokens(ca, a.highestBidder, ERC1155, tid, tam);
-            //update storage
-            unchecked {
-                s.erc1155AuctionIndexes[ca][tid][tam]--;
-            }
         }
         a.biddingAllowed = false;
         emit Auction_ItemClaimed(_auctionID);
@@ -225,6 +209,12 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         s.secondaryMarketTokenContract[_contractID] = address(0);
     }
 
+    /// @notice Allows the creation of new Auctions
+    /// @dev Will throw if the auction preset does not exist
+    /// @dev For ERC721 auctions, will throw if that tokenId is already in an unsettled auction
+    /// @param _info A struct containing various details about the auction
+    /// @param _contractID The identifier oof the tokenContract
+    /// @param _auctionPresetID The identifier of the GBMM preset to use for this auction
     function createAuction(
         InitiatorInfo calldata _info,
         uint160 _contractID,
@@ -239,25 +229,22 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         assert(tokenKind == ERC721 || tokenKind == ERC1155);
         if (ca == address(0)) revert NoSecondaryMarket();
         _validateInitialAuction(_info);
+        uint256 index = s.auctionNonce;
         if (tokenKind == ERC721) {
             if (s.erc721AuctionExists[ca][id] != false) revert AuctionExists();
             if (Ownable(ca).ownerOf(id) == address(0) || msg.sender != Ownable(ca).ownerOf(id)) revert NotTokenOwner();
             //transfer Token
             IERC721(ca).safeTransferFrom(msg.sender, address(this), id);
             //register onchain after successfull transfer
-            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.timestamp, amount, msg.sender)));
+            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.timestamp, amount, msg.sender, index)));
             amount = 1;
             s.erc721AuctionExists[ca][id] = true;
         }
         if (tokenKind == ERC1155) {
-            uint256 index = s.erc1155AuctionIndexes[ca][id][amount];
             if (IERC1155(ca).balanceOf(msg.sender, id) < amount) revert InsufficientToken();
             //transfer Token
             IERC1155(ca).safeTransferFrom(msg.sender, address(this), id, amount, "");
-            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.timestamp, index, amount, msg.sender)));
-            unchecked {
-                s.erc1155AuctionIndexes[ca][id][amount]++;
-            }
+            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.timestamp, amount, msg.sender, index)));
         }
 
         //set initiator info and set bidding allowed
@@ -315,10 +302,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
                 IERC1155(ca).safeTransferFrom(msg.sender, address(this), a.info.tokenID, diff, "");
                 // update storage
                 a.info.tokenAmount = _newTokenAmount;
-                unchecked {
-                    s.erc1155AuctionIndexes[ca][tid][currentAmount]--;
-                    s.erc1155AuctionIndexes[ca][tid][_newTokenAmount]++;
-                }
             }
             if (currentAmount > _newTokenAmount) {
                 diff = currentAmount - _newTokenAmount;
@@ -326,10 +309,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
                 _sendTokens(ca, msg.sender, _tokenKind, tid, diff);
                 //update storage
                 a.info.tokenAmount = _newTokenAmount;
-                unchecked {
-                    s.erc1155AuctionIndexes[ca][tid][currentAmount]--;
-                    s.erc1155AuctionIndexes[ca][tid][_newTokenAmount]++;
-                }
             }
             emit Auction_Modified(_auctionID, _newTokenAmount, _newEndTime);
         }
@@ -385,10 +364,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             }
             if (a.info.tokenKind == ERC1155) {
                 _sendTokens(ca, a.owner, ERC1155, tid, tam);
-                //update storage
-                unchecked {
-                    s.erc1155AuctionIndexes[ca][tid][tam]--;
-                }
             }
             emit AuctionCancelled(_auctionID, tid);
         }
@@ -404,18 +379,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             uint256 ownerShare = _proceeds + a.auctionDebt + a.dueIncentives;
             IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
 
-            //1.5% goes to pixelcraft
-            uint256 pixelcraftShare = (_proceeds * 15) / 1000;
-            IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
-            //1% goes to GBM
-            uint256 GBM = (_proceeds * 1) / 100;
-            IERC20(s.GHST).transfer(s.GBMAddress, GBM);
-            //0.5% to DAO
-            uint256 DAO = (_proceeds * 5) / 1000;
-            IERC20(s.GHST).transfer(s.DAO, DAO);
-            //1% to treasury
-            uint256 Treasury = (_proceeds * 1) / 100;
-            IERC20(s.GHST).transfer(s.Treasury, Treasury);
+            _settleFees(_proceeds);
 
             // Transfer the token to the owner/canceller
             if (a.info.tokenKind == ERC721) {
@@ -425,14 +389,25 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             }
             if (a.info.tokenKind == ERC1155) {
                 _sendTokens(ca, a.owner, ERC1155, tid, tam);
-                //update storage
-                unchecked {
-                    s.erc1155AuctionIndexes[ca][tid][tam]--;
-                }
             }
 
             emit AuctionCancelled(_auctionID, tid);
         }
+    }
+
+    function _settleFees(uint256 _total) internal {
+        //1.5% goes to pixelcraft
+        uint256 pixelcraftShare = (_total * 15) / 1000;
+        IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
+        //1% goes to GBM
+        uint256 GBM = (_total * 1) / 100;
+        IERC20(s.GHST).transfer(s.GBMAddress, GBM);
+        //0.5% to DAO
+        uint256 DAO = (_total * 5) / 1000;
+        IERC20(s.GHST).transfer(s.DAO, DAO);
+        //1% to treasury
+        uint256 Treasury = (_total * 1) / 100;
+        IERC20(s.GHST).transfer(s.Treasury, Treasury);
     }
 
     /// @notice Register parameters of auction to be used as presets
@@ -572,14 +547,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     //mock calls
     function checkPubKey() public view returns (bytes memory) {
         return s.backendPubKey;
-    }
-
-    function checkIndex(
-        address _contract,
-        uint256 id,
-        uint256 amount
-    ) public view returns (uint256) {
-        return s.erc1155AuctionIndexes[_contract][id][amount];
     }
 
     function changePubKey(bytes calldata _newPubKey) public onlyOwner {
