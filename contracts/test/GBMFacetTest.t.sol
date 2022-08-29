@@ -292,7 +292,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         cheat.stopPrank();
         //bidder3 bids 150ghst
         sig = constructSig(bidder3, erc1155Auction, 150e18, 100e18, bidder2priv);
-        cheat.prank(bidder3);
+        cheat.startPrank(bidder3);
         GBMFacet(address(diamond)).commitBid(erc1155Auction, 150e18, 100e18, 11, 0, 3, sig);
 
         //can't claim non-existent auction
@@ -309,6 +309,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         );
         GBMFacet(address(diamond)).claim(erc721Auction);
         uint256 oldEndTime = GBMFacet(address(diamond)).getAuctionEndTime(erc1155Auction);
+        cheat.stopPrank();
         //can't claim for someone else
         cheat.expectRevert("NotHighestBidderOrOwner");
         cheat.startPrank(bidder2);
@@ -337,13 +338,16 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         GBMFacet(address(diamond)).claim(erc721Auction);
         assertEq(erc721.ownerOf(1), bidder3);
 
-        //claim erc1155 auction
-        //this time owner claims
-        GBMFacet(address(diamond)).claim(erc1155Auction);
-
         //can't claim already claimed auction
         cheat.expectRevert(GBMFacet.AuctionClaimed.selector);
         GBMFacet(address(diamond)).claim(erc721Auction);
+        cheat.stopPrank();
+
+        //claim erc1155 auction
+        //this time owner claims
+        //owner doesn't need to wait for cancellationTime
+        cheat.warp(block.timestamp - 1 hours);
+        GBMFacet(address(diamond)).claim(erc1155Auction);
     }
 
     function testAuctionCancellation() public {

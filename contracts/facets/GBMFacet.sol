@@ -166,9 +166,18 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (a.owner == address(0)) revert NoAuction();
         if (a.claimed == true) revert AuctionClaimed();
         uint256 cancellationTime = s.cancellationTime;
-        if (a.info.endTime + getAuctionHammerTimeDuration() + cancellationTime > block.timestamp)
-            revert ClaimNotReady(a.info.endTime + getAuctionHammerTimeDuration() + cancellationTime);
-        //only owner or highestBidder should caim
+
+        //only owner or highestBidder should claim or finalize auction
+        //highestBidders have to wait after cancellationTime
+        if (msg.sender == a.highestBidder) {
+            if (a.info.endTime + getAuctionHammerTimeDuration() + cancellationTime > block.timestamp)
+                revert ClaimNotReady(a.info.endTime + getAuctionHammerTimeDuration() + cancellationTime);
+        }
+        //owners don't need to wait for cancellationTime
+        if (msg.sender == a.owner) {
+            if (a.info.endTime + getAuctionHammerTimeDuration() > block.timestamp)
+                revert ClaimNotReady(a.info.endTime + getAuctionHammerTimeDuration());
+        }
         require(msg.sender == a.highestBidder || msg.sender == a.owner, "NotHighestBidderOrOwner");
         address ca = s.secondaryMarketTokenContract[a.contractID];
         uint256 tid = a.info.tokenID;
