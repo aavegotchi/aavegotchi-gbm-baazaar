@@ -47,6 +47,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     error DurationTooHigh();
     error InvalidAuctionParams(string arg);
     error ContractDisabledAlready();
+    error ClaimNotReady(uint256 claimAvailable);
 
     /// @notice Place a GBM bid for a GBM auction
     /// @param _auctionID The auction you want to bid on
@@ -164,8 +165,9 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         Auction storage a = s.auctions[_auctionID];
         if (a.owner == address(0)) revert NoAuction();
         if (a.claimed == true) revert AuctionClaimed();
-        if (a.info.endTime + getAuctionHammerTimeDuration() > block.timestamp)
-            revert AuctionNotEnded(a.info.endTime + getAuctionHammerTimeDuration());
+        uint256 cancellationTime = s.cancellationTime;
+        if (a.info.endTime + getAuctionHammerTimeDuration() + cancellationTime > block.timestamp)
+            revert ClaimNotReady(a.info.endTime + getAuctionHammerTimeDuration() + cancellationTime);
         //only owner or highestBidder should caim
         require(msg.sender == a.highestBidder || msg.sender == a.owner, "NotHighestBidderOrOwner");
         address ca = s.secondaryMarketTokenContract[a.contractID];
@@ -336,7 +338,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
     }
 
-    /// @notice Seller can cancel an auction during the grace period
+    /// @notice Seller can cancel an auction during the cancellation time
     /// Throw if the token owner is not the caller of the function
     /// @param _auctionID The auctionId of the auction to cancel
     function cancelAuction(uint256 _auctionID) public {
