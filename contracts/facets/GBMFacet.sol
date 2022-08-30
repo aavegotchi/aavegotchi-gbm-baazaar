@@ -554,13 +554,4 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
         return (_newBidValue * decimaledRatio) / (bidDecimals * bidDecimals);
     }
-
-    //mock calls
-    function checkPubKey() public view returns (bytes memory) {
-        return s.backendPubKey;
-    }
-
-    function changePubKey(bytes calldata _newPubKey) public onlyOwner {
-        s.backendPubKey = _newPubKey;
-    }
 }

@@ -3,20 +3,24 @@
 
 import { BigNumberish, BytesLike } from "ethers";
 import { ethers } from "hardhat";
-import { ERC20Generic } from "../../typechain";
 
-//@ts-ignore
-// import hardhat, { run, ethers } from "hardhat";
-// dotenv.config({ path: __dirname + "/.env" });
+import { GBMFacet } from "../../typechain";
+
 import { getSelectors, FacetCutAction } from "../libraries/diamond";
 
 // Init GBM
 
 const pixelcraft = "0xD4151c984e6CF33E04FFAAF06c3374B2926Ecc64";
-const playerRewards = "0x27DF5C6dcd360f372e23d5e63645eC0072D0C098";
-const daoTreasury = "0xb208f8BB431f580CC4b216826AFfB128cd1431aB";
-const GBM = "0xb208f8BB431f580CC4b216826AFfB128cd1431aB";
-let sampleGHST: ERC20Generic;
+const DAO = "0xb208f8BB431f580CC4b216826AFfB128cd1431aB";
+const GBM = "";
+const Treasury = "";
+const GHST = "0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7";
+
+const realmParcels = "0x1D0360BaC7299C86Ec8E99d0c1C9A95FEfaF2a11";
+const tiles = "0x9216c31d8146bCB3eA5a9162Dc1702e8AEDCa355";
+const installations = "0x19f870bD94A34b3adAa9CaA439d333DA18d6812A";
+const aavegotchi = "0x86935F11C86623deC8a25696E1C19a8659CbF95d";
+const tokens = [realmParcels, tiles, installations, aavegotchi];
 
 interface Preset {
   incMin: BigNumberish;
@@ -52,7 +56,8 @@ const highPreset: Preset = {
 const gasPrice = 20000000000;
 
 export const presets: Preset[] = [lowPreset, mediumPreset, highPreset];
-export async function deployDiamond() {
+
+export async function deployFullDiamond() {
   const accounts = await ethers.getSigners();
   const contractOwner = accounts[0];
 
@@ -79,8 +84,6 @@ export async function deployDiamond() {
   const diamondInit = await DiamondInit.deploy({ gasPrice: gasPrice });
   await diamondInit.deployed();
   console.log("DiamondInit deployed:", diamondInit.address);
-  //@ts-ignore
-  const testing = ["hardhat", "localhost"].includes(hre.network.name);
 
   // deploy facets
   console.log("");
@@ -109,20 +112,19 @@ export async function deployDiamond() {
   //Use Matic PK
   let backendSigner = new ethers.Wallet(PK); // PK should start with '0x'
 
-  //deploy mock ERC20/ghst
-  const erc20 = await ethers.getContractFactory("ERC20Generic");
-  sampleGHST = await erc20.deploy();
-  await sampleGHST.deployed();
-  console.log("ERC20 deployed to", sampleGHST.address);
-
   let functionCall = diamondInit.interface.encodeFunctionData("init", [
     ethers.utils.hexDataSlice(backendSigner.publicKey, 1),
     pixelcraft,
-    sampleGHST.address,
+    GHST,
     GBM,
+    Treasury,
+    DAO,
   ]);
 
-  console.log("key:", ethers.utils.hexDataSlice(backendSigner.publicKey, 1));
+  console.log(
+    "using pubkey:",
+    ethers.utils.hexDataSlice(backendSigner.publicKey, 1)
+  );
 
   tx = await diamondCut.diamondCut(cut, diamondInit.address, functionCall, {
     gasPrice: gasPrice,
@@ -134,13 +136,29 @@ export async function deployDiamond() {
   }
   console.log("Completed diamond cut");
 
-  return diamond.address;
+  //set presets
+  console.log("setting presets");
+  const gbm: GBMFacet = (await ethers.getContractAt(
+    "GBMFacet",
+    diamond.address
+  )) as GBMFacet;
+  await gbm.setAuctionPresets(0, presets[0]);
+  await gbm.setAuctionPresets(1, presets[1]);
+  await gbm.setAuctionPresets(2, presets[2]);
+
+  console.log("all presets set");
+
+  console.log("enabling secondary markets");
+  for (let i = 0; i < tokens.length; i++) {
+    await gbm.enableContract(i, tokens[i]);
+    console.log(`enabled contractId ${i} for token ${tokens[i]} `);
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
 if (require.main === module) {
-  deployDiamond()
+  deployFullDiamond()
     .then(() => process.exit(0))
     .catch((error) => {
       console.error(error);
@@ -148,4 +166,4 @@ if (require.main === module) {
     });
 }
 
-exports.deployDiamond = deployDiamond;
+exports.deployFullDiamond = deployFullDiamond;
