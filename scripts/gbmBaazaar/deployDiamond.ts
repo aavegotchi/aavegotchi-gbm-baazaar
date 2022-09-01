@@ -12,7 +12,7 @@ import { getSelectors, FacetCutAction } from "../libraries/diamond";
 
 const pixelcraft = "0xD4151c984e6CF33E04FFAAF06c3374B2926Ecc64";
 const DAO = "0xb208f8BB431f580CC4b216826AFfB128cd1431aB";
-const GBM = "";
+const GBM = "0xA7427d0D45e8dd969049872F9cDE383716A39B23";
 const Treasury = "";
 const GHST = "0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7";
 
