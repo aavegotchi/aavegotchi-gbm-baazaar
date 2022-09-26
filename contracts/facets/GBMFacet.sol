@@ -48,6 +48,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     error InvalidAuctionParams(string arg);
     error ContractDisabledAlready();
     error ClaimNotReady(uint256 claimAvailable);
+    error OwnerBid();
 
     /// @notice Place a GBM bid for a GBM auction
     /// @param _auctionID The auction you want to bid on
@@ -82,6 +83,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 _highestBid
     ) internal {
         Auction storage a = s.auctions[_auctionID];
+        if (msg.sender == a.owner) revert OwnerBid();
         //verify existence
         if (a.owner == address(0)) revert NoAuction();
         if (a.info.endTime < block.timestamp) revert AuctionEnded();
