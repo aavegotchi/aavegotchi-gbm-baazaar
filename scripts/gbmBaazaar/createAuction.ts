@@ -26,9 +26,10 @@ function toBN(No: string) {
 }
 
 async function createAndBid() {
-  const GBMDiamondAddress = "0x36819192A0c04CdC3376a1A6C0f116C13bf6e9D5";
+  const GBMDiamondAddress = "0xd6F59C1bE030Af4a9b7Fbf44e01bD2f2A0d54488";
   let gbm: GBMFacet;
   let id: BigNumber;
+  let erc721: ERC721Generic;
   const PK1 = process.env.SECRET;
   const PK2 = process.env.SECRET_2;
   const acc = new ethers.Wallet(PK1);
@@ -41,12 +42,18 @@ async function createAndBid() {
     signers[0]
   )) as GBMFacet;
 
+  erc721 = (await ethers.getContractAt(
+    "ERC721Generic",
+    "0xdE492281AF1Eee056CaC72Ae139003506e02255d",
+    signers[0]
+  )) as ERC721Generic;
+
   const auctionDetails = {
     startTime: Math.floor(Date.now() / 1000 + 200),
     endTime: Math.floor(Date.now() / 1000) + 8640,
     tokenAmount: 1,
     tokenKind: "0x73ad2146", //ERC721
-    tokenID: "15",
+    tokenID: "14",
   };
 
   // const auctionDetails2 = {
@@ -59,22 +66,17 @@ async function createAndBid() {
 
   // //create an auction
   console.log("creating auction");
-
+  await erc721.setApprovalForAll(GBMDiamondAddress, true);
   const tx1 = await gbm.createAuction(auctionDetails, 10, 2);
   //get auction id
   const txResolved = await tx1.wait();
   const events = txResolved.events.find(
     (event) => event.event === "Auction_Initialized"
   );
-  // let [
-  //   _auctionID,
-  //   _tokenID,
-  //   _tokenAmount,
-  //   _contractAddress,
-  //   _tokenKind,
-  // ] = events.args;
-  // id = _auctionID;
-  // console.log("auction ID to claim in 2hours", _auctionID.toString());
+  let [_auctionID, _tokenID, _tokenAmount, _contractAddress, _tokenKind] =
+    events.args;
+  id = _auctionID;
+  console.log("auction ID to claim in 2hours", _auctionID.toString());
 
   // //second auction
   // const tx4 = await gbm.createAuction(auctionDetails2, 10, 2);
@@ -170,8 +172,8 @@ async function createAndBid() {
   // )) as GBMFacet;
 
   //cannot cancel until an auction is over
-  const tx = await gbm.claim(id);
-  console.log(tx.hash);
+  // const tx = await gbm.claim(id);
+  // console.log(tx.hash);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
