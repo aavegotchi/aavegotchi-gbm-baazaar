@@ -9,9 +9,7 @@ import "../libraries/AppStorage.sol";
 import "../test/ERC1155Generic.sol";
 import "../test/ERC20Generic.sol";
 import "../test/ERC721Generic.sol";
-import "../../lib/ds-test/src/cheat.sol";
-import "../../lib/ds-test/src/console.sol";
-import "../../lib/ds-test/src/test.sol";
+import "forge-std/Test.sol";
 import "./TestHelpers.sol";
 import "../libraries/LibSignature.sol";
 
