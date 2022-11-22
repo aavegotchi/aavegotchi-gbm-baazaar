@@ -2,8 +2,8 @@ name: CI
 on:
   push:
     branches:
-      - master
-      - main
+      #- master
+      - deprecate-contractId
   pull_request:
 
 jobs:
