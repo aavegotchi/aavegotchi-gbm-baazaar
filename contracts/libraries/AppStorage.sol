@@ -31,7 +31,7 @@ struct Auction {
     uint88 dueIncentives;
     bool biddingAllowed;
     bool claimed;
-    uint160 contractID;
+    address tokenContract;
     InitiatorInfo info;
     Preset presets;
 }
@@ -43,12 +43,12 @@ struct AppStorage {
     address Treasury;
     address GHST;
     mapping(address => bool) contractBiddingAllowed;
+    mapping(address=>bool) secondaryMarketTokenContract; //Token contract address=>allowed
     mapping(uint256 => Auction) auctions; //_auctionId => auctions
     mapping(address => mapping(uint256 => uint256)) erc1155TokensIndex; //Contract => TokenID => Amount being auctionned
     bytes backendPubKey;
     mapping(address => mapping(uint256 => bool)) erc721AuctionExists; //Contract => TokenID => Existence
     mapping(uint256 => Preset) auctionPresets; // presestID => Configuration parameters
-    mapping(uint256 => address) secondaryMarketTokenContract; //tokenContractId => Token contract address
     uint128 hammerTimeDuration;
     uint128 cancellationTime;
     uint256 auctionNonce;

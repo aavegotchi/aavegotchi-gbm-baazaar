@@ -105,7 +105,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         cheat.expectRevert(GBMFacet.UndefinedPreset.selector);
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 1 days, uint64(1), bytes4(ERC721), 1),
-            1100,
+            address(erc721),
             1
         );
 
@@ -115,19 +115,19 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         cheat.expectRevert(GBMFacet.NoSecondaryMarket.selector);
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 1 days, uint64(1), bytes4(ERC721), 1),
-            1100,
+            address(erc721),
             0
         );
 
         //set a secondary market
-        GBMFacet(address(diamond)).enableContract(10, address(erc721));
-        GBMFacet(address(diamond)).enableContract(11, address(erc1155));
+        GBMFacet(address(diamond)).toggleContractWhitelist(address(erc721),true);
+        GBMFacet(address(diamond)).toggleContractWhitelist(address(erc1155),true);
 
         //use incorrect start or end times
         cheat.expectRevert(GBMFacet.StartOrEndTimeTooLow.selector);
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp), uint64(1), bytes4(ERC721), 1),
-            10,
+            address(erc721),
             0
         );
 
@@ -135,7 +135,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         cheat.expectRevert(GBMFacet.DurationTooLow.selector);
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 200, uint64(1), bytes4(ERC721), 1),
-            10,
+            address(erc721),
             0
         );
 
@@ -143,14 +143,14 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         cheat.expectRevert(GBMFacet.DurationTooHigh.selector);
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 605000, uint64(1), bytes4(ERC721), 1),
-            10,
+            address(erc721),
             0
         );
 
         cheat.expectRevert("ownerOf: ERC721 NFTs assigned to the zero address are considered invalid");
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(1), bytes4(ERC721), 1),
-            10,
+            address(erc721),
             0
         );
 
@@ -160,7 +160,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(1), bytes4(ERC721), 1),
-            10,
+            address(erc721),
             0
         );
 
@@ -170,7 +170,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         erc721Auction = GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(1), bytes4(ERC721), 1),
-            10,
+            address(erc721),
             0
         );
 
@@ -179,20 +179,20 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         cheat.expectRevert(GBMFacet.InsufficientToken.selector);
         erc1155Auction = GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(10), bytes4(ERC1155), 0),
-            11,
+            address(erc1155),
             0
         );
         //create auction for 3 erc1155 tokens
         erc1155Auction = GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(3), bytes4(ERC1155), 0),
-            11,
+            address(erc1155),
             0
         );
 
         //creating another auction(with same token,id and amount) should increment index
         erc1155Auction2 = GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(3), bytes4(ERC1155), 0),
-            11,
+            address(erc1155),
             0
         );
 
@@ -211,7 +211,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(1), bytes4(ERC721), 1),
-            10,
+            address(erc721),
             0
         );
 
@@ -257,20 +257,20 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         bytes memory sig = constructSig(bidder2, erc721Auction, 100e18, 10, bidder2priv);
         cheat.expectRevert(abi.encodeWithSelector(GBMFacet.UnmatchedHighestBid.selector, 0));
-        GBMFacet(address(diamond)).commitBid(erc721Auction, 100e18, 10, 10, 1, 1, sig);
+        GBMFacet(address(diamond)).commitBid(erc721Auction, 100e18, 10, address(erc721), 1, 1, sig);
 
         sig = constructSig(bidder2, erc721Auction, 100e18, 0, bidder2priv);
 
-        GBMFacet(address(diamond)).commitBid(erc721Auction, 100e18, 0, 10, 1, 1, sig);
+        GBMFacet(address(diamond)).commitBid(erc721Auction, 100e18, 0, address(erc721), 1, 1, sig);
         GBMFacet(address(diamond)).getAuctionInfo(erc721Auction);
         cheat.stopPrank();
         cheat.startPrank(bidder3);
         erc20.approve(address(diamond), 100000e18);
         cheat.expectRevert(GBMFacet.MinBidNotMet.selector);
         sig = constructSig(bidder3, erc721Auction, 100e18, 100e18, bidder2priv);
-        GBMFacet(address(diamond)).commitBid(erc721Auction, 100e18, 100e18, 10, 1, 1, sig);
+        GBMFacet(address(diamond)).commitBid(erc721Auction, 100e18, 100e18, address(erc721), 1, 1, sig);
         sig = constructSig(bidder3, erc721Auction, 150e18, 100e18, bidder2priv);
-        GBMFacet(address(diamond)).commitBid(erc721Auction, 150e18, 100e18, 10, 1, 1, sig);
+        GBMFacet(address(diamond)).commitBid(erc721Auction, 150e18, 100e18, address(erc721), 1, 1, sig);
         cheat.stopPrank();
 
         //can successfully bid on ERC1155 auctions too
@@ -278,22 +278,22 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         sig = constructSig(bidder2, erc1155Auction, 100e18, 0, bidder2priv);
         cheat.startPrank(bidder2);
         //Test all onchain bid auths
-        cheat.expectRevert(abi.encodeWithSelector(GBMFacet.InvalidAuctionParams.selector, "contractID"));
-        GBMFacet(address(diamond)).commitBid(erc1155Auction, 100e18, 0, 111, 0, 1, sig);
+        cheat.expectRevert(abi.encodeWithSelector(GBMFacet.InvalidAuctionParams.selector, "tokenContract"));
+        GBMFacet(address(diamond)).commitBid(erc1155Auction, 100e18, 0, address(0xdead), 0, 1, sig);
         cheat.expectRevert(abi.encodeWithSelector(GBMFacet.InvalidAuctionParams.selector, "tokenID"));
-        GBMFacet(address(diamond)).commitBid(erc1155Auction, 100e18, 0, 11, 9, 1, sig);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction, 100e18, 0, address(erc1155), 9, 1, sig);
         cheat.expectRevert(abi.encodeWithSelector(GBMFacet.InvalidAuctionParams.selector, "amount"));
-        GBMFacet(address(diamond)).commitBid(erc1155Auction, 100e18, 0, 11, 0, 90, sig);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction, 100e18, 0, address(erc1155), 0, 90, sig);
 
         //bidder2 bids 100ghst
         GBMFacet(address(diamond)).getAuctionInfo(erc1155Auction);
-        GBMFacet(address(diamond)).commitBid(erc1155Auction, 100e18, 0, 11, 0, 3, sig);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction, 100e18, 0, address(erc1155), 0, 3, sig);
 
         cheat.stopPrank();
         //bidder3 bids 150ghst
         sig = constructSig(bidder3, erc1155Auction, 150e18, 100e18, bidder2priv);
         cheat.startPrank(bidder3);
-        GBMFacet(address(diamond)).commitBid(erc1155Auction, 150e18, 100e18, 11, 0, 3, sig);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction, 150e18, 100e18, address(erc1155), 0, 3, sig);
 
         //can't claim non-existent auction
         cheat.expectRevert(GBMFacet.NoAuction.selector);
@@ -320,7 +320,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         cheat.warp(block.timestamp - 20 minutes - 1 hours);
         //bid again during hammer time with bidder2
         sig = constructSig(bidder2, erc1155Auction, 200e18, 150e18, bidder2priv);
-        GBMFacet(address(diamond)).commitBid(erc1155Auction, 200e18, 150e18, 11, 0, 3, sig);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction, 200e18, 150e18, address(erc1155), 0, 3, sig);
         uint256 newEndTime = GBMFacet(address(diamond)).getAuctionEndTime(erc1155Auction);
         //make sure endTime is extended by 20minutes
         assertEq(newEndTime, oldEndTime + 20 minutes);
@@ -331,7 +331,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         //erc1155 auction outbid by bidder3
         //which also extends duration by 20 minutes
         sig = constructSig(bidder3, erc1155Auction, 250e18, 200e18, bidder2priv);
-        GBMFacet(address(diamond)).commitBid(erc1155Auction, 250e18, 200e18, 11, 0, 3, sig);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction, 250e18, 200e18, address(erc1155), 0, 3, sig);
         GBMFacet(address(diamond)).getAuctionEndTime(erc1155Auction);
         //since auction has been extended twice
         cheat.warp(block.timestamp + 40 minutes + 1 hours);
@@ -354,7 +354,7 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         //initialize a new auction for erc721
         uint256 erc721Auction2 = GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(1), bytes4(ERC721), 2),
-            10,
+            address(erc721),
             0
         );
 
@@ -370,40 +370,40 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         //verify auction cancellation by opening another auction with same params
         erc721Auction2 = GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(1), bytes4(ERC721), 2),
-            10,
+            address(erc721),
             0
         );
 
         //initialize a new auction for erc1155
         erc1155Auction2 = GBMFacet(address(diamond)).createAuction(
             InitiatorInfo(uint80(block.timestamp), uint80(block.timestamp) + 3 days, uint64(1), bytes4(ERC1155), 0),
-            11,
+            address(erc1155),
             0
         );
         //bidder2 bids 100
         bytes memory sig = constructSig(bidder2, erc721Auction2, 100e18, 0, bidder2priv);
         cheat.startPrank(bidder2);
         erc20.approve(address(diamond), 100000e18);
-        GBMFacet(address(diamond)).commitBid(erc721Auction2, 100e18, 0, 10, 2, 1, sig);
+        GBMFacet(address(diamond)).commitBid(erc721Auction2, 100e18, 0, address(erc721), 2, 1, sig);
         cheat.stopPrank();
         //outbid by bidder 3
         sig = constructSig(bidder3, erc721Auction2, 150e18, 100e18, bidder2priv);
         cheat.startPrank(bidder3);
         erc20.approve(address(diamond), 100000e18);
-        GBMFacet(address(diamond)).commitBid(erc721Auction2, 150e18, 100e18, 10, 2, 1, sig);
+        GBMFacet(address(diamond)).commitBid(erc721Auction2, 150e18, 100e18, address(erc721), 2, 1, sig);
 
         //FOR ERC1155
         //bidder2 bids 100ghst
         cheat.stopPrank();
         sig = constructSig(bidder2, erc1155Auction2, 100e18, 0, bidder2priv);
         cheat.startPrank(bidder2);
-        GBMFacet(address(diamond)).commitBid(erc1155Auction2, 100e18, 0, 11, 0, 1, sig);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction2, 100e18, 0, address(erc1155), 0, 1, sig);
         cheat.stopPrank();
         //outbid by bidder 3
         sig = constructSig(bidder3, erc1155Auction2, 150e18, 100e18, bidder2priv);
         cheat.startPrank(bidder3);
 
-        GBMFacet(address(diamond)).commitBid(erc1155Auction2, 150e18, 100e18, 11, 0, 1, sig);
+        GBMFacet(address(diamond)).commitBid(erc1155Auction2, 150e18, 100e18, address(erc1155), 0, 1, sig);
 
         cheat.stopPrank();
 

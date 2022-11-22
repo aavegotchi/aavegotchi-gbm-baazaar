@@ -26,7 +26,7 @@ contract GBMDeploy is Script, IDiamondCut {
     address DiamondOwner = 0x6d63dC5A225A4563D8Dcb941e312151b651EDB0e;
     address GBMDiamondAddress = 0xd6F59C1bE030Af4a9b7Fbf44e01bD2f2A0d54488;
     bytes pubKey =
-        hex"18db6dd94c8b8eeeeadbd0f7b4a0050135f086e0ba16f915773652d10e39e409a60a59adc13c2747f8fc4e405a08327849f51a2ed7073eb19f0a815c73dbd399";
+        hex"8a173f740878128ee63e08f8f05bbbd1627a57261aff5645333dbdd637723c10c46a6d77be6e766c84f21035988eeac9a37c20f189bf63e218786f83989520bd";
 
     DiamondCutFacet dcut;
     GBMFacet gFacet;
@@ -77,8 +77,8 @@ contract GBMDeploy is Script, IDiamondCut {
         GBMFacet(GBMDiamondAddress).setAuctionPresets(2, Preset(1000, 10000, 11000, 10000, 100000));
 
         //enable NFT addresses
-        GBMFacet(GBMDiamondAddress).enableContract(10, ERC721);
-        GBMFacet(GBMDiamondAddress).enableContract(11, ERC1155);
+        GBMFacet(GBMDiamondAddress).toggleContractWhitelist(ERC721,true);
+        GBMFacet(GBMDiamondAddress).toggleContractWhitelist(ERC1155,true);
 
         //allow bidding
         GBMFacet(GBMDiamondAddress).setBiddingAllowed(ERC721, true);
