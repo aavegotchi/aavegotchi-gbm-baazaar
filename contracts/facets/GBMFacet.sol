@@ -242,24 +242,25 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         bytes4 tokenKind = _info.tokenKind;
         uint256 _aid;
         assert(tokenKind == ERC721 || tokenKind == ERC1155);
-        if (!s.secondaryMarketTokenContract[_tokenContract]) revert NoSecondaryMarket();
+        address ca=_tokenContract;
+        if (!s.secondaryMarketTokenContract[ca]) revert NoSecondaryMarket();
         _validateInitialAuction(_info);
         uint256 index = s.auctionNonce;
         if (tokenKind == ERC721) {
-            if (s.erc721AuctionExists[_tokenContract][id] != false) revert AuctionExists();
-            if (Ownable(_tokenContract).ownerOf(id) == address(0) || msg.sender != Ownable(_tokenContract).ownerOf(id)) revert NotTokenOwner();
+            if (s.erc721AuctionExists[ca][id] != false) revert AuctionExists();
+            if (Ownable(ca).ownerOf(id) == address(0) || msg.sender != Ownable(ca).ownerOf(id)) revert NotTokenOwner();
             //transfer Token
-            IERC721(_tokenContract).safeTransferFrom(msg.sender, address(this), id);
+            IERC721(ca).safeTransferFrom(msg.sender, address(this), id);
             //register onchain after successfull transfer
-            _aid = uint256(keccak256(abi.encodePacked(_tokenContract, id, tokenKind, block.timestamp, amount, msg.sender, index)));
+            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.timestamp, amount, msg.sender, index)));
             amount = 1;
-            s.erc721AuctionExists[_tokenContract][id] = true;
+            s.erc721AuctionExists[ca][id] = true;
         }
         if (tokenKind == ERC1155) {
-            if (IERC1155(_tokenContract).balanceOf(msg.sender, id) < amount) revert InsufficientToken();
+            if (IERC1155(ca).balanceOf(msg.sender, id) < amount) revert InsufficientToken();
             //transfer Token
-            IERC1155(_tokenContract).safeTransferFrom(msg.sender, address(this), id, amount, "");
-            _aid = uint256(keccak256(abi.encodePacked(_tokenContract, id, tokenKind, block.timestamp, amount, msg.sender, index)));
+            IERC1155(ca).safeTransferFrom(msg.sender, address(this), id, amount, "");
+            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.timestamp, amount, msg.sender, index)));
         }
 
         //set initiator info and set bidding allowed
@@ -271,7 +272,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         a.biddingAllowed = true;
         //for recurring auction creations
         //   a.claimed = false;
-        emit Auction_Initialized(_aid, id, amount, _tokenContract, tokenKind, _auctionPresetID);
+        emit Auction_Initialized(_aid, id, amount, ca, tokenKind, _auctionPresetID);
         emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
         return _aid;
     }
