@@ -21,7 +21,6 @@ import "../libraries/LibSignature.sol";
 /// @author Guillaume Gonnaud
 contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifiers {
     error NoSecondaryMarket();
-
     error AuctionNotStarted();
     error ContractEnabledAlready();
     error AuctionExists();
@@ -98,8 +97,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (a.info.tokenID != _tokenID) revert InvalidAuctionParams("tokenID");
         if (a.info.tokenAmount != _amount) revert InvalidAuctionParams("amount");
 
-        //  if (_bidAmount <= _highestBid) revert HigherBidAmount(_highestBid);
-
         address tokenContract = a.tokenContract;
         if (s.contractBiddingAllowed[tokenContract] == false) revert BiddingNotAllowed();
 
@@ -142,10 +139,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
         if (previousHighestBid + duePay != 0) {
             //Refunding the previous bid as well as sending the incentives
-            //Added to prevent revert
-            //No need if using transfer()
-            //  IERC20(s.GHST).approve(address(this), (previousHighestBid + duePay));
-
             IERC20(s.GHST).transfer(previousHighestBidder, previousHighestBid + duePay);
         }
     }
@@ -155,10 +148,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             claim(_auctionIDs[index]);
         }
     }
-
-    // function updatePlayerRewardsAddress(address _newAddress) external onlyOwner {
-    //     s.playerRewards = _newAddress;
-    // }
 
     /// @notice Attribute a token to the winner of the auction and distribute the proceeds to the owner of this contract.
     /// throw if bidding is disabled or if the auction is not finished.
@@ -242,27 +231,23 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         bytes4 tokenKind = _info.tokenKind;
         uint256 _aid;
         assert(tokenKind == ERC721 || tokenKind == ERC1155);
-        address ca=_tokenContract;
+        address ca = _tokenContract;
         if (!s.secondaryMarketTokenContract[ca]) revert NoSecondaryMarket();
         _validateInitialAuction(_info);
-        uint256 index = s.auctionNonce;
         if (tokenKind == ERC721) {
             if (s.erc721AuctionExists[ca][id] != false) revert AuctionExists();
             if (Ownable(ca).ownerOf(id) == address(0) || msg.sender != Ownable(ca).ownerOf(id)) revert NotTokenOwner();
             //transfer Token
             IERC721(ca).safeTransferFrom(msg.sender, address(this), id);
-            //register onchain after successfull transfer
-            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.timestamp, amount, msg.sender, index)));
             amount = 1;
             s.erc721AuctionExists[ca][id] = true;
         }
         if (tokenKind == ERC1155) {
             if (IERC1155(ca).balanceOf(msg.sender, id) < amount) revert InsufficientToken();
-            //transfer Token
+            //transfer Token/s
             IERC1155(ca).safeTransferFrom(msg.sender, address(this), id, amount, "");
-            _aid = uint256(keccak256(abi.encodePacked(ca, id, tokenKind, block.timestamp, amount, msg.sender, index)));
         }
-
+        _aid = s.auctionNonce;
         //set initiator info and set bidding allowed
         Auction storage a = s.auctions[_aid];
         a.owner = msg.sender;
@@ -270,17 +255,17 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         a.info = _info;
         a.presets = s.auctionPresets[_auctionPresetID];
         a.biddingAllowed = true;
-        //for recurring auction creations
-        //   a.claimed = false;
+
         emit Auction_Initialized(_aid, id, amount, ca, tokenKind, _auctionPresetID);
         emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
+        s.auctionNonce++;
         return _aid;
     }
 
     function modifyAuction(
         uint256 _auctionID,
         uint80 _newEndTime,
-        uint64 _newTokenAmount,
+        uint56 _newTokenAmount,
         bytes4 _tokenKind
     ) external {
         Auction storage a = s.auctions[_auctionID];

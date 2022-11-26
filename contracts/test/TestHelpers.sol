@@ -1,6 +1,5 @@
 import "forge-std/Test.sol";
 
-
 abstract contract TestHelpers is DSTest {
     Vm cheat = Vm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
@@ -12,9 +11,9 @@ abstract contract TestHelpers is DSTest {
         uint256 privKey
     ) public returns (bytes memory sig) {
         bytes32 mHash = keccak256(abi.encodePacked(bidder, _auctionID, _bidAmount, lastHighestBid));
-        emit log_bytes32(mHash);
+
         mHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", mHash));
-          emit log_bytes32(mHash);
+
         (uint8 v, bytes32 r, bytes32 s) = cheat.sign(privKey, mHash);
         sig = getSig(v, r, s);
     }
