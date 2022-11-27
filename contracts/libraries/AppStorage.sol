@@ -10,7 +10,7 @@ struct InitiatorInfo {
     uint80 startTime;
     uint80 endTime;
     uint56 tokenAmount;
-    uint8 gotchiCategory; //0 = portal 1 = open portal 2 = pending 3 = aavegotchi
+    uint8 category; //0 = portal 1 = open portal 2 = pending 3 = aavegotchi
     bytes4 tokenKind;
     uint256 tokenID;
 }
@@ -44,7 +44,7 @@ struct AppStorage {
     address Treasury;
     address GHST;
     mapping(address => bool) contractBiddingAllowed;
-    mapping(address => bool) secondaryMarketTokenContract; //Token contract address=>allowed
+    mapping(address => bool) contractAllowed; //Token contract address=>allowed
     mapping(uint256 => Auction) auctions; //_auctionId => auctions
     mapping(address => mapping(uint256 => uint256)) erc1155TokensIndex; //Contract => TokenID => Amount being auctionned
     bytes backendPubKey;

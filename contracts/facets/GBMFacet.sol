@@ -20,7 +20,7 @@ import "../libraries/LibSignature.sol";
 /// @dev See GBM.auction on how to use this contract
 /// @author Guillaume Gonnaud
 contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifiers {
-    error NoSecondaryMarket();
+    error ContractNotAllowed();
     error AuctionNotStarted();
     error ContractEnabledAlready();
     error AuctionExists();
@@ -206,11 +206,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _allowed True if auctions can be created for the token, False if otherwise.
     function toggleContractWhitelist(address _tokenContract, bool _allowed) external onlyOwner {
         if (_allowed) {
-            if (s.secondaryMarketTokenContract[_tokenContract]) revert ContractEnabledAlready();
-            s.secondaryMarketTokenContract[_tokenContract] = _allowed;
+            if (s.contractAllowed[_tokenContract]) revert ContractEnabledAlready();
+            s.contractAllowed[_tokenContract] = _allowed;
         } else {
-            if (!s.secondaryMarketTokenContract[_tokenContract]) revert ContractDisabledAlready();
-            s.secondaryMarketTokenContract[_tokenContract] = _allowed;
+            if (!s.contractAllowed[_tokenContract]) revert ContractDisabledAlready();
+            s.contractAllowed[_tokenContract] = _allowed;
         }
     }
 
@@ -232,7 +232,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 _aid;
         assert(tokenKind == ERC721 || tokenKind == ERC1155);
         address ca = _tokenContract;
-        if (!s.secondaryMarketTokenContract[ca]) revert NoSecondaryMarket();
+        if (!s.contractAllowed[ca]) revert ContractNotAllowed();
         _validateInitialAuction(_info);
         if (tokenKind == ERC721) {
             if (s.erc721AuctionExists[ca][id] != false) revert AuctionExists();
