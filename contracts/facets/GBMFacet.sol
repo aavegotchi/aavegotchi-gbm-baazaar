@@ -417,6 +417,22 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         s.auctionPresets[_auctionPresetID] = _preset;
     }
 
+    function setPubkey(bytes calldata _newPubkey) external onlyOwner {
+        s.backendPubKey = _newPubkey;
+    }
+
+    function setAddresses(
+        address _pixelcraft,
+        address _dao,
+        address _gbm,
+        address _rarityFarming
+    ) external onlyOwner {
+        s.pixelcraft = _pixelcraft;
+        s.DAO = _dao;
+        s.GBMAddress = _gbm;
+        s.rarityFarming = _rarityFarming;
+    }
+
     function getAuctionPresets(uint256 _auctionPresetID) public view returns (Preset memory presets_) {
         presets_ = s.auctionPresets[_auctionPresetID];
     }
