@@ -41,7 +41,7 @@ struct AppStorage {
     address pixelcraft;
     address DAO;
     address GBMAddress;
-    address Treasury;
+    address rarityFarming;
     address GHST;
     mapping(address => bool) contractBiddingAllowed;
     mapping(address => bool) contractAllowed; //Token contract address=>allowed
