@@ -107,7 +107,6 @@ export async function deployFullDiamond() {
   const diamondCut = await ethers.getContractAt("IDiamondCut", diamond.address);
   let tx;
   let receipt;
-  //@ts-ignore
   const PK = ethers.utils.toUtf8Bytes(process.env.SECRET);
   //Use Matic PK
   let backendSigner = new ethers.Wallet(PK); // PK should start with '0x'
@@ -150,8 +149,8 @@ export async function deployFullDiamond() {
 
   console.log("enabling secondary markets");
   for (let i = 0; i < tokens.length; i++) {
-    await gbm.enableContract(i, tokens[i]);
-    console.log(`enabled contractId ${i} for token ${tokens[i]} `);
+    await gbm.toggleContractWhitelist(tokens[i], true);
+    console.log(`enabled token with address ${tokens[i]} `);
   }
 }
 
