@@ -370,19 +370,19 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
         if (a.highestBid > 0) {
             uint256 _proceeds = a.highestBid - a.auctionDebt;
-            //Fees of pixelcraft,GBM,DAO and Treasury
+            //Fees of pixelcraft,GBM,DAO and rarityFarming
             uint256 _auctionFees = (_proceeds * 4) / 100;
 
-            //Send the debt + his due incentives from the seller to the highest bidder
+            //Auction owner pays penalty fee to the GBM Contract
             IERC20(s.GHST).transferFrom(a.owner, address(this), _auctionFees + a.dueIncentives + a.auctionDebt);
 
-            //Refund it's bid plus his incentives to the highest bidder
+            //Refund lastHighestBidder's bid plus his incentives
             uint256 ownerShare = _proceeds + a.auctionDebt + a.dueIncentives;
             IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
 
             _settleFees(_proceeds);
 
-            // Transfer the token to the owner/canceller
+            // Transfer the token back to the owner/canceller
             if (a.info.tokenKind == ERC721) {
                 _sendTokens(ca, a.owner, ERC721, tid, 1);
                 //update storage
@@ -407,8 +407,8 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 DAO = (_total * 5) / 1000;
         IERC20(s.GHST).transfer(s.DAO, DAO);
         //1% to treasury
-        uint256 Treasury = (_total * 1) / 100;
-        IERC20(s.GHST).transfer(s.Treasury, Treasury);
+        uint256 rarityFarming = (_total * 1) / 100;
+        IERC20(s.GHST).transfer(s.rarityFarming, rarityFarming);
     }
 
     /// @notice Register parameters of auction to be used as presets

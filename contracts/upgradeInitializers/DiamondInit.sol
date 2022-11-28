@@ -23,15 +23,13 @@ contract DiamondInit {
         address pixelcraft,
         address GHST,
         address GBM,
-        address Treasury,
+        address rarityFarming,
         address DAO
-    )
-        external
-    {
+    ) external {
         s.pixelcraft = pixelcraft;
         s.GHST = GHST;
         s.GBMAddress = GBM;
-        s.Treasury = Treasury;
+        s.rarityFarming = rarityFarming;
         s.DAO = DAO;
         s.backendPubKey = backendPubKey;
 
