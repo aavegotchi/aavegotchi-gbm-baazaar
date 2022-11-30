@@ -13,7 +13,7 @@ import { getSelectors, FacetCutAction } from "../libraries/diamond";
 const pixelcraft = "0xD4151c984e6CF33E04FFAAF06c3374B2926Ecc64";
 const DAO = "0xb208f8BB431f580CC4b216826AFfB128cd1431aB";
 const GBM = "0xA7427d0D45e8dd969049872F9cDE383716A39B23";
-const Treasury = "0xb208f8BB431f580CC4b216826AFfB128cd1431aB";
+const rarityFarming = "0x27DF5C6dcd360f372e23d5e63645eC0072D0C098";
 const GHST = "0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7";
 
 const realmParcels = "0x1D0360BaC7299C86Ec8E99d0c1C9A95FEfaF2a11";
@@ -116,7 +116,7 @@ export async function deployFullDiamond() {
     pixelcraft,
     GHST,
     GBM,
-    Treasury,
+    rarityFarming,
     DAO,
   ]);
 
