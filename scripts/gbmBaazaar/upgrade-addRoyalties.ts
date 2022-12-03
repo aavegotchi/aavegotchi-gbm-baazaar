@@ -10,10 +10,7 @@ export async function deployUpgrade() {
   const facets: FacetsAndAddSelectors[] = [
     {
       facetName: "GBMFacet",
-      addSelectors: [
-        // "function createAuction((uint80 startTime,uint80 endTime,uint64 tokenAmount,bytes4 tokenKind,uint256 tokenID) calldata _info, uint160 _contractID,uint256 _auctionPresetID) external",
-        // "function modifyAuction(uint256 _auctionID,uint80 _newEndTime,uint64 _newTokenAmount,bytes4 _tokenKind) external",
-      ],
+      addSelectors: [],
       removeSelectors: [],
     },
   ];
@@ -21,8 +18,8 @@ export async function deployUpgrade() {
   const joined = convertFacetAndSelectorsToString(facets);
 
   const args: DeployUpgradeTaskArgs = {
-    diamondUpgrader: "0x6d63dC5A225A4563D8Dcb941e312151b651EDB0e",
-    diamondAddress: "0x36819192A0c04CdC3376a1A6C0f116C13bf6e9D5",
+    diamondUpgrader: "0x585E06CA576D0565a035301819FD2cfD7104c1E8",
+    diamondAddress: "0xD5543237C656f25EEA69f1E247b8Fa59ba353306",
     facetsAndAddSelectors: joined,
     useLedger: false,
     useMultisig: false,
