@@ -14,6 +14,9 @@ import "../libraries/AppStorage.sol";
 import "../libraries/LibDiamond.sol";
 import "../libraries/LibSignature.sol";
 
+import "../interfaces/IERC2981.sol";
+import "../interfaces/IMultiRoyalty.sol";
+
 //import "hardhat/console.sol";
 
 /// @title GBM auction contract
@@ -143,13 +146,27 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 tid = a.info.tokenID;
         uint256 tam = a.info.tokenAmount;
 
+        //royalties
+        address[] memory royalties;
+        uint256[] memory royaltyShares;
+
         //Prevents re-entrancy
         a.claimed = true;
         uint256 _proceeds = a.highestBid - a.auctionDebt;
-        //96% goes to auction owner
-        uint256 ownerShare = (_proceeds * 96) / 100;
-        IERC20(s.GHST).transfer(a.owner, ownerShare);
-        _settleFees(_proceeds);
+
+        if (IERC165(ca).supportsInterface(0x2a55205a)) {
+            // EIP-2981 is supported
+            royalties = new address[](1);
+            royaltyShares = new uint256[](1);
+            (royalties[0], royaltyShares[0]) = IERC2981(ca).royaltyInfo(tid, _proceeds);
+        } else if (IERC165(ca).supportsInterface(0x24d34933)) {
+            // Multi Royalty Standard supported
+            (royalties, royaltyShares) = IMultiRoyalty(ca).multiRoyaltyInfo(tid, _proceeds);
+        }
+        uint256 toOwner = _settleFeesWithRoyalty(_proceeds, royalties, royaltyShares);
+
+        //remaining goes to auction owner
+        IERC20(s.GHST).transfer(a.owner, toOwner);
 
         if (a.info.tokenKind == ERC721) {
             _sendTokens(ca, a.highestBidder, ERC721, tid, 1);
@@ -371,7 +388,31 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
     }
 
-    function _settleFees(uint256 _total) internal {
+    function _settleFeesWithRoyalty(
+        uint256 _total,
+        address[] memory _royaltyRecipients,
+        uint256[] memory _royaltyShares
+    ) internal returns (uint256 rem_) {
+        //settle royalties if any
+        uint256 totalRoyalty = 0;
+        if (_royaltyRecipients.length > 0) {
+            //assert length
+            if (_royaltyRecipients.length != _royaltyShares.length) revert("LengthMismatch");
+
+            for (uint256 i = 0; i < _royaltyRecipients.length; i++) {
+                if (_royaltyShares[i] > 0) {
+                    IERC20(s.GHST).transfer(_royaltyRecipients[i], _royaltyShares[i]);
+                    emit RoyaltyPaid(_royaltyRecipients[i], _royaltyShares[i]);
+                    totalRoyalty += _royaltyShares[i];
+                }
+            }
+        }
+        //settle other fees
+        uint256 totalFees = _settleFees(_total);
+        rem_ = _total - (totalFees + totalRoyalty);
+    }
+
+    function _settleFees(uint256 _total) internal returns (uint256 rem_) {
         //1.5% goes to pixelcraft
         uint256 pixelcraftShare = (_total * 15) / 1000;
         IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
@@ -384,6 +425,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         //1% to treasury
         uint256 rarityFarming = (_total * 1) / 100;
         IERC20(s.GHST).transfer(s.rarityFarming, rarityFarming);
+        rem_ = pixelcraftShare + GBM + DAO + rarityFarming;
     }
 
     /// @notice Register parameters of auction to be used as presets

@@ -1,11 +1,12 @@
- update-submodules: 
-	@echo Update git submodules
-	@git submodule update --init --recursive
 
- deploy-GBM:
-	@echo Deploying GBM contracts to mumbai
-	@forge script script/deployGBM.s.sol:GBMDeploy --rpc-url <> --private-key <> --with-gas-price 150000000000 --broadcast --verify --etherscan-api-key <> -vvvvv
+-include .env
+
+export FOUNDRY_ETH_RPC_URL=${MATIC_URL}
+export FOUNDRY_FORK_BLOCK_NUMBER?=36375649
 
 
+ test-GBMRoyalties:
+	@echo testing GBM Royalties
+	@ forge t --mc RoyaltyTests -vvvvv  
 
-	
+
