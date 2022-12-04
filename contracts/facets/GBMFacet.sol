@@ -163,7 +163,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             // Multi Royalty Standard supported
             (royalties, royaltyShares) = IMultiRoyalty(ca).multiRoyaltyInfo(tid, _proceeds);
         }
-        uint256 toOwner = _settleFeesWithRoyalty(_proceeds, royalties, royaltyShares);
+        uint256 toOwner = _settleFeesWithRoyalty(_auctionID, _proceeds, royalties, royaltyShares);
 
         //remaining goes to auction owner
         IERC20(s.GHST).transfer(a.owner, toOwner);
@@ -389,6 +389,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     }
 
     function _settleFeesWithRoyalty(
+        uint256 _auctionId,
         uint256 _total,
         address[] memory _royaltyRecipients,
         uint256[] memory _royaltyShares
@@ -402,7 +403,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             for (uint256 i = 0; i < _royaltyRecipients.length; i++) {
                 if (_royaltyShares[i] > 0) {
                     IERC20(s.GHST).transfer(_royaltyRecipients[i], _royaltyShares[i]);
-                    emit RoyaltyPaid(_royaltyRecipients[i], _royaltyShares[i]);
+                    emit RoyaltyPaid(_auctionId, s.GHST, _royaltyRecipients[i], _royaltyShares[i]);
                     totalRoyalty += _royaltyShares[i];
                 }
             }

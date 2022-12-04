@@ -39,7 +39,7 @@ interface IGBM {
     event Auction_ItemClaimed(uint256 indexed _auctionID);
 
     event AuctionCancelled(uint256 indexed _auctionId, uint256 _tokenId);
-    event RoyaltyPaid(address _beneficiary, uint256 _amount);
+    event RoyaltyPaid(uint256 indexed _auctionId, address indexed _tokenContractAddress, address _beneficiary, uint256 _amount);
     //        uint256 _auctionID,
 } //        uint256 _bidAmount,
 //        uint256 _highestBid
