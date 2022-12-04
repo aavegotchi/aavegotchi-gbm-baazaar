@@ -12,7 +12,7 @@ contract RoyaltyTests is IDiamondCut, Test {
     GBMFacet gFacet;
     address Diamond = 0xD5543237C656f25EEA69f1E247b8Fa59ba353306;
     address GHST = 0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7;
-    uint256 auctionId = 264;
+    uint256 auctionId = 442;
 
     bytes4[] GBMSELECTORS = generateSelectors("GBMFacet");
 
@@ -45,19 +45,25 @@ contract RoyaltyTests is IDiamondCut, Test {
             (royalties, royaltyShares) = IMultiRoyalty(a.tokenContract).multiRoyaltyInfo(a.info.tokenID, _proceeds);
         }
         //asserting only royalty balances
-        uint256 balanceBefore = IGHST(GHST).balanceOf(royalties[0]);
+        uint256 balance1Before = IGHST(GHST).balanceOf(royalties[0]);
+        uint256 balance2Before = IGHST(GHST).balanceOf(royalties[1]);
+
         GBMFacet(Diamond).claim(auctionId);
 
         uint256 totalFees = _getFees(_proceeds, auctionId);
-        //single royalty
-        uint256 totalRoyalty = royaltyShares[0];
+        //dual royalty
+        uint256 totalRoyalty = royaltyShares[0] + royaltyShares[1];
         totalFees += totalRoyalty;
-        //owner is same as royalty in this case
         uint256 toOwner = _proceeds - totalFees;
-        uint256 balanceAfter = IGHST(GHST).balanceOf(royalties[0]);
-
-        assertEq(balanceBefore + toOwner, balanceAfter);
-
+        if (royalties[0] == royalties[1] && royalties[0] == a.owner) {
+            //owner is same as royalty in this case
+            uint256 balanceAfter = IGHST(GHST).balanceOf(royalties[0]);
+            assertEq(balance1Before + toOwner, balanceAfter);
+        }
+        if (royalties[0] != a.owner && royalties[0] != royalties[1]) {
+            uint256 balanceAfter = IGHST(GHST).balanceOf(royalties[1]);
+            assertEq(balance1Before + royaltyShares[1], balanceAfter);
+        }
         //make sure there are no overflows
         assertEq(toOwner + totalFees, _proceeds);
     }
