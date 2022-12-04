@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@anders-t/ethers-ledger": "^1.0.4",
     "@ethersproject/experimental": "^5.4.0",
     "@ethersproject/hardware-wallets": "^5.4.0",
     "@gnosis.pm/safe-core-sdk": "^0.3.1",

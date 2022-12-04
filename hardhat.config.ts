@@ -31,13 +31,13 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
 module.exports = {
   networks: {
     hardhat: {
-      // forking: {
-      //   url: process.env.MATIC_URL,
-      //   accounts: [process.env.SECRET],
-      //   // timeout: 1200000,
-      //   // blockNumber: 26200790,
-      //   // blockNumber: 13024371
-      // },
+      forking: {
+        url: process.env.MATIC_URL,
+        accounts: [process.env.SECRET],
+        // timeout: 1200000,
+        // blockNumber: 26200790,
+        // blockNumber: 13024371
+      },
       blockGasLimit: 200000000,
       timeout: 120000,
       gas: "auto",
@@ -54,28 +54,28 @@ module.exports = {
       gasPrice: 10000000000,
       //   timeout: 90000
     },
-    kovan: {
-      url: process.env.KOVAN_URL,
-      // url: 'https://rpc-mainnet.maticvigil.com/',
-      accounts: [process.env.SECRET],
-      // blockGasLimit: 20000000,
-      blockGasLimit: 12000000,
-      gasPrice: 100000000000,
-      //   timeout: 90000
-    },
-    mumbai: {
-      url: process.env.MUMBAI,
-      // url: 'https://rpc-mainnet.maticvigil.com/',
-      accounts: [
-        process.env.SECRET,
-        process.env.SECRET_2,
-        process.env.SECRET_3,
-      ],
-      // blockGasLimit: 20000000,
-      // blockGasLimit: 12000000,
-      // gasPrice: 100000000000,
-      //   timeout: 90000
-    },
+    // kovan: {
+    //   url: process.env.KOVAN_URL,
+    //   // url: 'https://rpc-mainnet.maticvigil.com/',
+    //   accounts: [process.env.SECRET],
+    //   // blockGasLimit: 20000000,
+    //   blockGasLimit: 12000000,
+    //   gasPrice: 100000000000,
+    //   //   timeout: 90000
+    // },
+    // mumbai: {
+    //   url: process.env.MUMBAI,
+    //   // url: 'https://rpc-mainnet.maticvigil.com/',
+    //   accounts: [
+    //     process.env.SECRET,
+    //     process.env.SECRET_2,
+    //     process.env.SECRET_3,
+    //   ],
+    //   // blockGasLimit: 20000000,
+    //   // blockGasLimit: 12000000,
+    //   // gasPrice: 100000000000,
+    //   //   timeout: 90000
+    // },
   },
   gasReporter: {
     currency: "USD",

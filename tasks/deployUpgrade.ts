@@ -16,6 +16,7 @@ import {
   getSelectors,
   getSighashes,
 } from "../scripts/helperFunctions";
+import { LedgerSigner } from "@anders-t/ethers-ledger";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -104,9 +105,8 @@ task(
   .setAction(
     async (taskArgs: DeployUpgradeTaskArgs, hre: HardhatRuntimeEnvironment) => {
       const facets: string = taskArgs.facetsAndAddSelectors;
-      const facetsAndAddSelectors: FacetsAndAddSelectors[] = convertStringToFacetAndSelectors(
-        facets
-      );
+      const facetsAndAddSelectors: FacetsAndAddSelectors[] =
+        convertStringToFacetAndSelectors(facets);
       const diamondUpgrader: string = taskArgs.diamondUpgrader;
       const diamondAddress: string = taskArgs.diamondAddress;
       const useMultisig = taskArgs.useMultisig;
@@ -116,10 +116,12 @@ task(
 
       //Instantiate the Signer
       let signer: Signer;
-      const owner = await ((await hre.ethers.getContractAt(
-        "OwnershipFacet",
-        diamondAddress
-      )) as OwnershipFacet).owner();
+      const owner = await (
+        (await hre.ethers.getContractAt(
+          "OwnershipFacet",
+          diamondAddress
+        )) as OwnershipFacet
+      ).owner();
       const testing = ["hardhat", "localhost"].includes(hre.network.name);
 
       if (testing) {
@@ -130,9 +132,6 @@ task(
         signer = await hre.ethers.getSigner(owner);
       } else if (hre.network.name === "matic" || "mumbai") {
         if (useLedger) {
-          const {
-            LedgerSigner,
-          } = require("../../aavegotchi-contracts/node_modules/@ethersproject/hardware-wallets");
           signer = new LedgerSigner(hre.ethers.provider);
         } else signer = (await hre.ethers.getSigners())[0];
       } else {
@@ -239,12 +238,13 @@ task(
         //Choose to use a multisig or a simple deploy address
         if (useMultisig) {
           console.log("Diamond cut");
-          const tx: PopulatedTransaction = await diamondCut.populateTransaction.diamondCut(
-            cut,
-            initAddress,
-            initCalldata,
-            { gasLimit: 800000 }
-          );
+          const tx: PopulatedTransaction =
+            await diamondCut.populateTransaction.diamondCut(
+              cut,
+              initAddress,
+              initCalldata,
+              { gasLimit: 800000 }
+            );
 
           await sendToGnosisSafe(hre, diamondUpgrader, tx, signer);
         } else {
@@ -252,7 +252,7 @@ task(
             cut,
             initAddress,
             initCalldata,
-            { gasLimit: 800000 }
+            { gasPrice: gasPrice }
           );
 
           const receipt: ContractReceipt = await tx.wait();

@@ -21,7 +21,7 @@ export async function deployUpgrade() {
     diamondUpgrader: "0x585E06CA576D0565a035301819FD2cfD7104c1E8",
     diamondAddress: "0xD5543237C656f25EEA69f1E247b8Fa59ba353306",
     facetsAndAddSelectors: joined,
-    useLedger: false,
+    useLedger: true,
     useMultisig: false,
     initAddress: ethers.constants.AddressZero,
     initCalldata: "0x",
