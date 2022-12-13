@@ -5,6 +5,7 @@ import "hardhat-contract-sizer";
 import { task } from "hardhat/config";
 import * as dotenv from "dotenv";
 
+import "@nomiclabs/hardhat-etherscan";
 import "@typechain/hardhat";
 
 dotenv.config({ path: __dirname + "/.env" });
@@ -29,6 +30,9 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
 // defaultNetwork, networks, solc, and paths.
 // Go to https://buidler.dev/config/ to learn more
 module.exports = {
+  etherscan: {
+    apiKey: process.env.POLYGON_API_KEY,
+  },
   networks: {
     hardhat: {
       forking: {
