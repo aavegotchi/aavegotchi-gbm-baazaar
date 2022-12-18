@@ -34,7 +34,7 @@ const lowPreset: Preset = {
   incMin: 500,
   incMax: 1000,
   bidMultiplier: 500,
-  stepMin: 10000,
+  stepMin: 1000,
   bidDecimals: 100000,
 };
 const mediumPreset: Preset = {

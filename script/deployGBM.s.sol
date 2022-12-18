@@ -72,7 +72,7 @@ contract GBMDeploy is Script, IDiamondCut {
         // IDiamondCut(address(diamond)).diamondCut(cut, address(dInit), payload);
 
         // set presets
-        GBMFacet(GBMDiamondAddress).setAuctionPresets(0, Preset(500, 1000, 500, 10000, 100000));
+        GBMFacet(GBMDiamondAddress).setAuctionPresets(0, Preset(500, 1000, 500, 1000, 100000));
         GBMFacet(GBMDiamondAddress).setAuctionPresets(1, Preset(500, 5000, 4970, 5000, 100000));
         GBMFacet(GBMDiamondAddress).setAuctionPresets(2, Preset(1000, 10000, 11000, 10000, 100000));
 
