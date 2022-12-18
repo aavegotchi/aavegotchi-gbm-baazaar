@@ -158,12 +158,12 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             // EIP-2981 is supported
             royalties = new address[](1);
             royaltyShares = new uint256[](1);
-            (royalties[0], royaltyShares[0]) = IERC2981(ca).royaltyInfo(tid, _proceeds);
+            (royalties[0], royaltyShares[0]) = IERC2981(ca).royaltyInfo(tid, a.highestBid);
         } else if (IERC165(ca).supportsInterface(0x24d34933)) {
             // Multi Royalty Standard supported
-            (royalties, royaltyShares) = IMultiRoyalty(ca).multiRoyaltyInfo(tid, _proceeds);
+            (royalties, royaltyShares) = IMultiRoyalty(ca).multiRoyaltyInfo(tid, a.highestBid);
         }
-        uint256 toOwner = _settleFeesWithRoyalty(_auctionID, _proceeds, royalties, royaltyShares);
+        uint256 toOwner = _settleFeesWithRoyalty(_auctionID, a.highestBid, royalties, royaltyShares) - a.auctionDebt;
 
         //remaining goes to auction owner
         IERC20(s.GHST).transfer(a.owner, toOwner);
@@ -360,7 +360,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             if (getAuctionEndTime(_auctionID) + s.cancellationTime < block.timestamp) revert("CancellationTimeExceeded");
             uint256 _proceeds = a.highestBid - a.auctionDebt;
             //Fees of pixelcraft,GBM,DAO and rarityFarming
-            uint256 _auctionFees = (_proceeds * 4) / 100;
+            uint256 _auctionFees = (a.highestBid * 4) / 100;
 
             //Auction owner pays penalty fee to the GBM Contract
             IERC20(s.GHST).transferFrom(a.owner, address(this), _auctionFees + a.dueIncentives + a.auctionDebt);
@@ -372,7 +372,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             emit Auction_IncentivePaid(_auctionID, a.highestBidder, ownerShare - a.highestBid);
             emit Auction_BidRemoved(_auctionID, a.highestBidder, a.highestBid);
 
-            _settleFees(_proceeds);
+            _settleFees(a.highestBid);
 
             // Transfer the token back to the owner/canceller
             if (a.info.tokenKind == ERC721) {
