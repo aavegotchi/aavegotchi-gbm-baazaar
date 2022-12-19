@@ -152,7 +152,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
         //Prevents re-entrancy
         a.claimed = true;
-        uint256 _proceeds = a.highestBid - a.auctionDebt;
 
         if (IERC165(ca).supportsInterface(0x2a55205a)) {
             // EIP-2981 is supported
