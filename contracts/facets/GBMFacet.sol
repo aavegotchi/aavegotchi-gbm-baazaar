@@ -57,6 +57,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     ) internal {
         Auction storage a = s.auctions[_auctionID];
         if (msg.sender == a.owner) revert("OwnerBidNotAllowed");
+        if (a.info.startTime < block.timestamp) revert("AuctionNotStarted");
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
         if (a.info.endTime < block.timestamp) revert("AuctionEnded");
