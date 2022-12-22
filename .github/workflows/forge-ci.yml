@@ -18,4 +18,4 @@ jobs:
         with:
           version: nightly
       - name: Run tests
-        run: yarn add @nomiclabs/hardhat-ethers && forge update && forge test
+        run: yarn add @nomiclabs/hardhat-ethers && forge update && forge t --mc GBMFacetTest -vvvvv  

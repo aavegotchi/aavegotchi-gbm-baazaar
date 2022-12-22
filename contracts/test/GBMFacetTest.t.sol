@@ -258,6 +258,14 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         sig = constructSig(bidder2, erc721Auction, 100e18, 0, bidder2priv);
 
+        //can't bid before auction starts
+
+        cheat.warp(GBMFacet(address(diamond)).getAuctionStartTime(erc721Auction) - 1);
+        cheat.expectRevert("AuctionNotStarted");
+        GBMFacet(address(diamond)).commitBid(erc721Auction, 100e18, 0, address(erc721), 1, 1, sig);
+        //warp to normal time;
+        cheat.warp(GBMFacet(address(diamond)).getAuctionStartTime(erc721Auction));
+
         GBMFacet(address(diamond)).commitBid(erc721Auction, 100e18, 0, address(erc721), 1, 1, sig);
         GBMFacet(address(diamond)).getAuctionInfo(erc721Auction);
         cheat.stopPrank();
