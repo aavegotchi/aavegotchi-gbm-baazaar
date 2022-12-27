@@ -47,16 +47,10 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _auctionID The auction you want to bid on
     /// @param _bidAmount The amount of the ERC20 token the bid is made of. They should be withdrawable by this contract.
     /// @param _highestBid The current higest bid. Throw if incorrect.
-    function bid(
-        uint256 _auctionID,
-        address _tokenContract,
-        uint256 _tokenID,
-        uint256 _amount,
-        uint256 _bidAmount,
-        uint256 _highestBid
-    ) internal {
+    function bid(uint256 _auctionID, address _tokenContract, uint256 _tokenID, uint256 _amount, uint256 _bidAmount, uint256 _highestBid) internal {
         Auction storage a = s.auctions[_auctionID];
         if (msg.sender == a.owner) revert("OwnerBidNotAllowed");
+        if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
         if (a.info.endTime < block.timestamp) revert("AuctionEnded");
@@ -206,11 +200,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _info A struct containing various details about the auction
     /// @param _tokenContract The contract address of the token
     /// @param _auctionPresetID The identifier of the GBMM preset to use for this auction
-    function createAuction(
-        InitiatorInfo calldata _info,
-        address _tokenContract,
-        uint256 _auctionPresetID
-    ) external returns (uint256) {
+    function createAuction(InitiatorInfo calldata _info, address _tokenContract, uint256 _auctionPresetID) external returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
         uint256 amount = _info.tokenAmount;
@@ -248,12 +238,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         return _aid;
     }
 
-    function modifyAuction(
-        uint256 _auctionID,
-        uint80 _newEndTime,
-        uint56 _newTokenAmount,
-        bytes4 _tokenKind
-    ) external {
+    function modifyAuction(uint256 _auctionID, uint80 _newEndTime, uint56 _newTokenAmount, bytes4 _tokenKind) external {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
@@ -308,13 +293,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (duration > 604800) revert("DurationTooHigh");
     }
 
-    function _sendTokens(
-        address _contract,
-        address _recipient,
-        bytes4 _tokenKind,
-        uint256 _tokenID,
-        uint256 _amount
-    ) internal {
+    function _sendTokens(address _contract, address _recipient, bytes4 _tokenKind, uint256 _tokenID, uint256 _amount) internal {
         if (_tokenKind == ERC721) {
             IERC721(_contract).safeTransferFrom(address(this), _recipient, _tokenID, "");
         }
@@ -439,12 +418,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         s.backendPubKey = _newPubkey;
     }
 
-    function setAddresses(
-        address _pixelcraft,
-        address _dao,
-        address _gbm,
-        address _rarityFarming
-    ) external onlyOwner {
+    function setAddresses(address _pixelcraft, address _dao, address _gbm, address _rarityFarming) external onlyOwner {
         s.pixelcraft = _pixelcraft;
         s.DAO = _dao;
         s.GBMAddress = _gbm;
@@ -524,29 +498,29 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     }
 
     function onERC721Received(
-        address, /* _operator */
-        address, /*  _from */
-        uint256, /*  _tokenId */
+        address /* _operator */,
+        address /*  _from */,
+        uint256 /*  _tokenId */,
         bytes calldata /* _data */
     ) external pure override returns (bytes4) {
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
     function onERC1155Received(
-        address, /* _operator */
-        address, /* _from */
-        uint256, /* _id */
-        uint256, /* _value */
+        address /* _operator */,
+        address /* _from */,
+        uint256 /* _id */,
+        uint256 /* _value */,
         bytes calldata /* _data */
     ) external pure override returns (bytes4) {
         return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
     }
 
     function onERC1155BatchReceived(
-        address, /* _operator */
-        address, /* _from */
-        uint256[] calldata, /* _ids */
-        uint256[] calldata, /* _values */
+        address /* _operator */,
+        address /* _from */,
+        uint256[] calldata /* _ids */,
+        uint256[] calldata /* _values */,
         bytes calldata /* _data */
     ) external pure override returns (bytes4) {
         return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));

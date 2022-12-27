@@ -258,6 +258,14 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
 
         sig = constructSig(bidder2, erc721Auction, 100e18, 0, bidder2priv);
 
+        //can't bid before auction starts
+
+        cheat.warp(GBMFacet(address(diamond)).getAuctionStartTime(erc721Auction) - 1);
+        cheat.expectRevert("AuctionNotStarted");
+        GBMFacet(address(diamond)).commitBid(erc721Auction, 100e18, 0, address(erc721), 1, 1, sig);
+        //warp to normal time;
+        cheat.warp(GBMFacet(address(diamond)).getAuctionStartTime(erc721Auction));
+
         GBMFacet(address(diamond)).commitBid(erc721Auction, 100e18, 0, address(erc721), 1, 1, sig);
         GBMFacet(address(diamond)).getAuctionInfo(erc721Auction);
         cheat.stopPrank();
@@ -422,26 +430,22 @@ contract GBMFacetTest is IDiamondCut, DSTest, TestHelpers {
         GBMFacet(address(diamond)).claim(erc1155Auction2);
     }
 
-    function diamondCut(
-        FacetCut[] calldata _diamondCut,
-        address _init,
-        bytes calldata _calldata
-    ) external override {}
+    function diamondCut(FacetCut[] calldata _diamondCut, address _init, bytes calldata _calldata) external override {}
 
     function onERC1155Received(
-        address, /* _operator */
-        address, /* _from */
-        uint256, /* _id */
-        uint256, /* _value */
+        address /* _operator */,
+        address /* _from */,
+        uint256 /* _id */,
+        uint256 /* _value */,
         bytes calldata /* _data */
     ) external pure returns (bytes4) {
         return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
     }
 
     function onERC721Received(
-        address, /* _operator */
-        address, /*  _from */
-        uint256, /*  _tokenId */
+        address /* _operator */,
+        address /*  _from */,
+        uint256 /*  _tokenId */,
         bytes calldata /* _data */
     ) external pure returns (bytes4) {
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
