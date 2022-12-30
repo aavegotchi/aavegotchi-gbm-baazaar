@@ -12,8 +12,7 @@ contract RoyaltyTests is IDiamondCut, Test {
     GBMFacet gFacet;
     address Diamond = 0xD5543237C656f25EEA69f1E247b8Fa59ba353306;
     address GHST = 0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7;
-    uint256 auctionId = 442;
-
+    uint256 auctionId = 1683;
     bytes4[] GBMSELECTORS = generateSelectors("GBMFacet");
 
     function setUp() public {
@@ -39,10 +38,10 @@ contract RoyaltyTests is IDiamondCut, Test {
             // EIP-2981 is supported
             royalties = new address[](1);
             royaltyShares = new uint256[](1);
-            (royalties[0], royaltyShares[0]) = IERC2981(a.tokenContract).royaltyInfo(a.info.tokenID, _proceeds);
+            (royalties[0], royaltyShares[0]) = IERC2981(a.tokenContract).royaltyInfo(a.info.tokenID, a.highestBid);
         } else if (IERC165(a.tokenContract).supportsInterface(0x24d34933)) {
             // Multi Royalty Standard supported
-            (royalties, royaltyShares) = IMultiRoyalty(a.tokenContract).multiRoyaltyInfo(a.info.tokenID, _proceeds);
+            (royalties, royaltyShares) = IMultiRoyalty(a.tokenContract).multiRoyaltyInfo(a.info.tokenID, a.highestBid);
         }
         //asserting only royalty balances
         uint256 balance1Before = IGHST(GHST).balanceOf(royalties[0]);
@@ -50,27 +49,28 @@ contract RoyaltyTests is IDiamondCut, Test {
 
         GBMFacet(Diamond).claim(auctionId);
 
-        uint256 totalFees = _getFees(_proceeds, auctionId);
+        uint256 totalFees = _getFees(a.highestBid);
         //dual royalty
         uint256 totalRoyalty = royaltyShares[0] + royaltyShares[1];
+
         totalFees += totalRoyalty;
-        uint256 toOwner = _proceeds - totalFees;
+
+        uint256 toOwner = a.highestBid - totalFees - a.auctionDebt;
         if (royalties[0] == royalties[1] && royalties[0] == a.owner) {
             //owner is same as royalty in this case
             uint256 balanceAfter = IGHST(GHST).balanceOf(royalties[0]);
-            assertEq(balance1Before + toOwner, balanceAfter);
+
+            assertEq(balance1Before + toOwner + totalRoyalty, balanceAfter);
         }
         if (royalties[0] != a.owner && royalties[0] != royalties[1]) {
             uint256 balanceAfter = IGHST(GHST).balanceOf(royalties[1]);
             assertEq(balance1Before + royaltyShares[1], balanceAfter);
         }
         //make sure there are no overflows
-        assertEq(toOwner + totalFees, _proceeds);
+        assertEq(toOwner + totalFees + a.auctionDebt, a.highestBid);
     }
 
-    function _getFees(uint256 _total, uint256 _auctionId) public view returns (uint256 total) {
-        Auction memory a = GBMFacet(Diamond).getAuctionInfo(auctionId);
-
+    function _getFees(uint256 _total) public returns (uint256 total) {
         //1.5% goes to pixelcraft
         uint256 pixelcraftShare = (_total * 15) / 1000;
         //1% goes to GBM
@@ -82,6 +82,7 @@ contract RoyaltyTests is IDiamondCut, Test {
         uint256 rarityFarming = (_total * 1) / 100;
 
         uint256 rem_ = pixelcraftShare + GBM + DAO + rarityFarming;
+        total = rem_;
     }
 
     function diamondCut(
