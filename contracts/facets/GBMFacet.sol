@@ -82,6 +82,17 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         //Transfer the money of the bidder to the GBM Diamond
         IERC20(s.GHST).transferFrom(msg.sender, address(this), _bidAmount);
 
+        //Extend warmup time if bid is made towards warmup duration end
+        uint256 warmupEndTime = s.warmupEndTime[_auctionID];
+        if (warmupEndTime > 0) {
+            uint256 minWarmupWindow = warmupEndTime - s.defaultWarmupDuration;
+            if ((block.timestamp >= minWarmupWindow && block.timestamp < warmupEndTime) || block.timestamp == warmupEndTime) {
+                //extend warmup duration
+                s.warmupEndTime[_auctionID] = block.timestamp + s.defaultWarmupDuration;
+                emit Auction_WarmUpEndTimeUpdated(_auctionID, s.warmupEndTime[_auctionID]);
+            }
+        }
+
         //Extend the duration time of the auction if we are close to the end
         if (getAuctionEndTime(_auctionID) < block.timestamp + getAuctionHammerTimeDuration()) {
             a.info.endTime = uint80(block.timestamp + getAuctionHammerTimeDuration());
@@ -98,10 +109,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             emit Auction_BidRemoved(_auctionID, previousHighestBidder, previousHighestBid);
         }
 
-        if (duePay != 0) {
-            s.auctions[_auctionID].auctionDebt = uint88(a.auctionDebt + duePay);
-            emit Auction_IncentivePaid(_auctionID, previousHighestBidder, duePay);
-        }
+        if (duePay != 0) {}
 
         emit Auction_BidPlaced(_auctionID, msg.sender, _bidAmount);
 
@@ -113,8 +121,16 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         s.auctions[_auctionID].highestBid = uint96(_bidAmount);
 
         if (previousHighestBid + duePay != 0) {
-            //Refunding the previous bid as well as sending the incentives
-            IERC20(s.GHST).transfer(previousHighestBidder, previousHighestBid + duePay);
+            //only pay out incentives if not in warmup period
+            if (getAuctionWarmupEndTime(_auctionID) < block.timestamp) {
+                s.auctions[_auctionID].auctionDebt = uint88(a.auctionDebt + duePay);
+                //Refunding the previous bid as well as sending the incentives
+                IERC20(s.GHST).transfer(previousHighestBidder, previousHighestBid + duePay);
+                emit Auction_IncentivePaid(_auctionID, previousHighestBidder, duePay);
+            } else {
+                //only refund if still in warmup period
+                IERC20(s.GHST).transfer(previousHighestBidder, previousHighestBid);
+            }
         }
     }
 
@@ -209,7 +225,9 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     function createAuction(
         InitiatorInfo calldata _info,
         address _tokenContract,
-        uint256 _auctionPresetID
+        uint256 _auctionPresetID,
+        bool _withWarmup,
+        uint256 _warmupPeriodInSeconds
     ) external returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
@@ -241,6 +259,10 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         a.info = _info;
         a.presets = s.auctionPresets[_auctionPresetID];
         a.biddingAllowed = true;
+        if (_withWarmup) {
+            if (_warmupPeriodInSeconds < 5 minutes) revert("MinimumWarmupPeriodNotReached");
+            s.warmupEndTime[_aid] = a.info.startTime + _warmupPeriodInSeconds;
+        }
 
         emit Auction_Initialized(_aid, id, amount, ca, tokenKind, _auctionPresetID);
         emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
@@ -577,5 +599,22 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
 
         return (_newBidValue * decimaledRatio) / (bidDecimals * bidDecimals);
+    }
+
+    function getAuctionWarmupEndTime(uint256 _auctionID) public view returns (uint256) {
+        uint256 warmupTime = s.warmupEndTime[_auctionID];
+        if (warmupTime != 0) {
+            return warmupTime;
+        } else {
+            return s.auctions[_auctionID].info.startTime;
+        }
+    }
+
+    function getDefaultAuctionWarmUpDuration() public view returns (uint256) {
+        return s.defaultWarmupDuration;
+    }
+
+    function setDefaultAuctionWarmupDuration(uint256 _newDefaultWarmupDuration) public onlyOwner {
+        s.defaultWarmupDuration = _newDefaultWarmupDuration;
     }
 }
