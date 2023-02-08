@@ -53,6 +53,8 @@ struct AppStorage {
     uint128 hammerTimeDuration;
     uint128 cancellationTime;
     uint256 auctionNonce;
+    mapping(uint256 => uint256) warmupEndTime;
+    uint256 defaultWarmupDuration;
 }
 
 contract Modifiers {
