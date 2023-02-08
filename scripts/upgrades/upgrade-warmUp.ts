@@ -12,7 +12,7 @@ import { maticGBMDiamond, maticGBMDiamondUpgrader } from "../constants";
 import { maticDiamondAddress, maticDiamondUpgrader } from "../helperFunctions";
 
 export async function deployWarmupUpgrade() {
-  const IniatorInfo =
+  const InitiatorInfo =
     "tuple(uint80 startTime,uint80 endTime,uint56 tokenAmount,uint8 category,bytes4 tokenKind,uint256 tokenID)";
   const facets: FacetsAndAddSelectors[] = [
     {
@@ -21,10 +21,10 @@ export async function deployWarmupUpgrade() {
         "function getAuctionWarmupEndTime(uint256 _auctionID) public view returns (uint256)",
         "function getDefaultAuctionWarmUpDuration() public view returns (uint256)",
         "function setDefaultAuctionWarmupDuration(uint256 _newDefaultWarmupDuration) public",
-        `function createAuction(${IniatorInfo} calldata _info,address _tokenContract,uint256 _auctionPresetID,bool _withWarmup,uint256 _warmupPeriodInSeconds)`,
+        `function createAuction(${InitiatorInfo} calldata _info,address _tokenContract,uint256 _auctionPresetID,bool _withWarmup,uint256 _warmupPeriodInSeconds)`,
       ],
       removeSelectors: [
-        //"function createAuction((uint80 startTime,uint80 endTime,uint56 tokenAmount,uint8 category,bytes4 tokenKind,uint256 tokenID),address _tokenContract,uint256 _auctionPresetID",
+        `function createAuction(${InitiatorInfo} calldata _info,address _tokenContract,uint256 _auctionPresetID)`,
       ],
     },
   ];

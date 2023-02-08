@@ -33,7 +33,7 @@ import { assert, expect } from "chai";
 dotenv.config({ path: __dirname + "/.env" });
 
 //constants for testing
-let auctionID = "4418";
+let auctionID = "4979";
 let warmupTime = 300;
 let initiatorInfo: InitiatorInfo;
 let tokenContract;
@@ -43,33 +43,17 @@ let bid2 = "40";
 let bid3 = "50";
 let bid4 = "100";
 
-async function toSigner(address: string) {
-  const genericSigner = await ethers.getSigner(address);
-  return genericSigner;
-}
-let ownerSigner: Signer;
-
-let ghst: ERC20Generic;
-let erc1155: ERC1155Generic;
-let erc721: ERC721Generic;
-let owner: string;
 let gbmFacet: GBMFacet;
 let mockGBMFacet: TestGBMFacet;
-let erc1155auctionId1: string;
-let erc1155auctionId2: string;
-let erc721auctionId1: string;
-let erc721auctionId2: string;
-
-let currentHighestBid;
-const erc1155ContractID = 1010;
-const erc721ContractID = 1111;
 let auctionOwner: string;
 
-const erc1155typeID: BytesLike = "0x973bb640";
+let bidder1BalanceBefore: BigNumber;
+let bidder2BalanceBefore: BigNumber;
+let bidder1BalanceAfter: BigNumber;
+
 const erc721typeID: BytesLike = "0x73ad2146";
 const bidder1 = "0x1BdEbAf12ec0CE61bCfc4c8e2bB15f1286fbfE2A";
 const bidder2 = "0x6c127b8ff818d1bbbf6015c327fde5ca73a78a91";
-const ghstAddress = "0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7";
 
 describe("Test Auction WarmUp Duration ", async function () {
   before(async function () {
@@ -134,8 +118,8 @@ describe("Test Auction WarmUp Duration ", async function () {
   });
 
   it("bids in warmup time do not have incentives", async function () {
-    const bidder1BalanceBefore = await getGHSTBalance(bidder1);
-    const bidder2BalanceBefore = await getGHSTBalance(bidder2);
+    bidder1BalanceBefore = await getGHSTBalance(bidder1);
+    bidder2BalanceBefore = await getGHSTBalance(bidder2);
     mockGBMFacet = await impersonate(bidder1, mockGBMFacet, ethers, network);
     await warp(10);
     await mockGBMFacet.mockCommitBid(
@@ -146,7 +130,6 @@ describe("Test Auction WarmUp Duration ", async function () {
       tokenID,
       1
     );
-
     //bidder 2 outbids bidder 1
     mockGBMFacet = await impersonate(bidder2, mockGBMFacet, ethers, network);
     await mockGBMFacet.mockCommitBid(
@@ -157,10 +140,12 @@ describe("Test Auction WarmUp Duration ", async function () {
       tokenID,
       1
     );
-    const bidder1balanceAfter = await getGHSTBalance(bidder1);
+    bidder1BalanceAfter = await getGHSTBalance(bidder1);
     //no incentives paid out
-    expect(bidder1BalanceBefore).to.equal(bidder1balanceAfter);
+    expect(bidder1BalanceBefore).to.equal(bidder1BalanceAfter);
+  });
 
+  it("Bids made toward the end of the warmup time extend the warmup time", async function () {
     //warmup time is extended by 5minutes if bids are made towards end of warmup time
     const warmupTimeEnd1 = await gbmFacet.getAuctionWarmupEndTime(auctionID);
     await warp(100);
