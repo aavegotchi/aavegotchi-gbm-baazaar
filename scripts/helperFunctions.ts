@@ -104,3 +104,26 @@ export async function getDiamondSigner(
     throw Error("Incorrect network selected");
   }
 }
+
+export async function getSigner(
+  hre: HardhatRuntimeEnvironment,
+  deployer: string
+) {
+  let testing = ["hardhat", "localhost"].includes(hre.network.name);
+
+  if (testing) {
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [deployer],
+    });
+    await hre.network.provider.request({
+      method: "hardhat_setBalance",
+      params: [deployer, "0x100000000000000000000000"],
+    });
+    return await hre.ethers.getSigner(deployer);
+  } else {
+    const accounts = await hre.ethers.getSigners();
+
+    return accounts[0];
+  }
+}

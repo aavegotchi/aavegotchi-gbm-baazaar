@@ -7,6 +7,7 @@ import * as dotenv from "dotenv";
 
 import "@nomiclabs/hardhat-etherscan";
 import "@typechain/hardhat";
+require("./tasks/createBatchERC1155Auctions");
 
 dotenv.config({ path: __dirname + "/.env" });
 // require("./tasks/generateDiamondABI.js");
