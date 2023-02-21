@@ -17,6 +17,7 @@ import {
   CORE_PET_GODLIKE,
   CORE_PET_RARE,
 } from "../helpers/constants";
+import { getRandomInt } from "./helperFunctions";
 
 async function createBatchWearableAuctions() {
   // schematic auction
@@ -87,10 +88,12 @@ async function createBatchWearableAuctions() {
     if (coreAmounts[i] === 0) {
       continue;
     }
+    const startTime =
+      Math.floor(Date.now() / 1000) + 200 + getRandomInt(0, 86400);
     tokenIds.push(coreIds[i]);
     tokenAmounts.push(coreAmounts[i]);
-    startTimes.push(Math.floor(Date.now() / 1000 + 200));
-    endTimes.push(Math.floor(Date.now() / 1000) + 8640);
+    startTimes.push(startTime);
+    endTimes.push(startTime + getRandomInt(0, 86400));
   }
 
   const args: BatchERC1155AuctionsTaskArgs = {
