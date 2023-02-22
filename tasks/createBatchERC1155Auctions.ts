@@ -41,12 +41,17 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
       const tokenIds = taskArgs.tokenIds
         .split(",")
         .filter((str) => str.length > 0);
-      const tokenAmounts = taskArgs.tokenAmounts
-        .split(",")
-        .filter((str) => str.length > 0);
+
+      console.log("token ids:", tokenIds);
+
+      // const tokenAmounts = taskArgs.tokenAmounts
+      //   .split(",")
+      //   .filter((str) => str.length > 0);
       const startTimes = taskArgs.startTimes
         .split(",")
         .filter((str) => str.length > 0);
+
+      console.log("start times:", startTimes);
       const endTimes = taskArgs.endTimes
         .split(",")
         .filter((str) => str.length > 0);
@@ -54,6 +59,8 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
       const categories = taskArgs.categories
         .split(",")
         .filter((str) => str.length > 0);
+
+      console.log("caterories:", categories);
 
       const signer = await getSigner(hre, deployer);
       const erc1155 = await hre.ethers.getContractAt(
@@ -73,11 +80,14 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
         const auctionDetails = {
           startTime: startTimes[i],
           endTime: endTimes[i],
-          tokenAmount: tokenAmounts[i],
+          tokenAmount: 1,
           tokenKind: "0x973bb640", //ERC1155
           tokenID: tokenIds[i],
           category: categories[i],
         };
+
+        console.log("Creating auction:", auctionDetails);
+
         const txReceipt = await (
           await gbm.createAuction(auctionDetails, tokenContractAddress, preset)
         ).wait();

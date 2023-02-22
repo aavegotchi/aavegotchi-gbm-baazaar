@@ -31,7 +31,6 @@ async function createBatchWearableAuctions() {
   const amounts = [600, 300, 150, 0, 30, 3];
 
   const tokenIds = [];
-  const tokenAmounts = [];
   const startTimes = [];
   const endTimes = [];
   const categories = [];
@@ -41,16 +40,17 @@ async function createBatchWearableAuctions() {
       continue;
     }
     for (let j = 0; j < schematicIds[i].length; j++) {
-      const randomInt = getRandomInt(0, 86400);
-      const startTime = Math.floor(Date.now() / 1000) + 200 + randomInt;
-      const threeDays = 86400 * 3;
-      const endTime = startTime + threeDays;
+      for (let k = 0; k < amounts[i]; k++) {
+        const randomInt = getRandomInt(0, 86400);
+        const startTime = Math.floor(Date.now() / 1000) + 200 + randomInt;
+        const threeDays = 86400 * 3;
+        const endTime = startTime + threeDays;
 
-      tokenIds.push(schematicIds[i][j]);
-      tokenAmounts.push(amounts[i]);
-      startTimes.push(startTime);
-      endTimes.push(endTime);
-      categories.push(8); //schematics are 8 in the baazaar
+        tokenIds.push(schematicIds[i][j]);
+        startTimes.push(startTime);
+        endTimes.push(endTime);
+        categories.push(8); //schematics are 8 in the baazaar
+      }
     }
   }
 
@@ -96,17 +96,19 @@ async function createBatchWearableAuctions() {
       continue;
     }
 
-    const randomInt = getRandomInt(0, 86400);
+    for (let k = 0; k < coreAmounts[i]; k++) {
+      const randomInt = getRandomInt(0, 86400);
 
-    const startTime = Math.floor(Date.now() / 1000) + 200 + randomInt;
-    const threeDays = 86400 * 3;
-    const endTime = startTime + threeDays;
+      const startTime = Math.floor(Date.now() / 1000) + 200 + randomInt;
+      const threeDays = 86400 * 3;
+      const endTime = startTime + threeDays;
 
-    tokenIds.push(coreIds[i]);
-    tokenAmounts.push(coreAmounts[i]);
-    startTimes.push(startTime);
-    endTimes.push(endTime);
-    categories.push(11); //cores are 11 in the baazaar
+      tokenIds.push(coreIds[i]);
+      // tokenAmounts.push(coreAmounts[i]);
+      startTimes.push(startTime);
+      endTimes.push(endTime);
+      categories.push(11); //cores are 11 in the baazaar
+    }
   }
 
   const args: BatchERC1155AuctionsTaskArgs = {
@@ -114,11 +116,12 @@ async function createBatchWearableAuctions() {
     tokenContractAddress: "0x4fDfc1B53Fd1D80d969C984ba7a8CE4c7bAaD442", // forge diamond
     deployer: "0x8D46fd7160940d89dA026D59B2e819208E714E82",
     preset: "1",
-    tokenIds: tokenIds.join(),
-    tokenAmounts: tokenAmounts.join(),
-    startTimes: startTimes.join(),
-    endTimes: endTimes.join(),
-    categories: categories.join(),
+    tokenIds: tokenIds.join(","),
+    // tokenAmounts: tokenAmounts.join(),
+    tokenAmounts: Array(tokenIds.length).fill(1).join(","),
+    startTimes: startTimes.join(","),
+    endTimes: endTimes.join(","),
+    categories: categories.join(","),
   };
 
   console.log("Total number of auctions to create:", tokenIds.length);
