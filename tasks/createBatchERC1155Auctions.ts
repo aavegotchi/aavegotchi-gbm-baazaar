@@ -15,6 +15,7 @@ export interface BatchERC1155AuctionsTaskArgs {
   startTimes: string;
   endTimes: string;
   preset: string;
+  categories: string;
   // preset: AuctionPreset;
 }
 
@@ -27,6 +28,7 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
   .addParam("tokenAmounts", "Comma-separated string of tokenAmounts")
   .addParam("startTimes", "Comma-separated string of startTimes")
   .addParam("endTimes", "Comma-separated string of endTimes")
+  .addParam("categories", "Categories of the auctions")
   .setAction(
     async (
       taskArgs: BatchERC1155AuctionsTaskArgs,
@@ -46,6 +48,10 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
         .split(",")
         .filter((str) => str.length > 0);
       const endTimes = taskArgs.endTimes
+        .split(",")
+        .filter((str) => str.length > 0);
+
+      const categories = taskArgs.categories
         .split(",")
         .filter((str) => str.length > 0);
 
@@ -70,7 +76,7 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
           tokenAmount: tokenAmounts[i],
           tokenKind: "0x973bb640", //ERC1155
           tokenID: tokenIds[i],
-          category: 5,
+          category: categories[i],
         };
         const txReceipt = await (
           await gbm.createAuction(auctionDetails, tokenContractAddress, preset)

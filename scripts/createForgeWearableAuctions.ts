@@ -27,23 +27,30 @@ async function createBatchWearableAuctions() {
   const legendary = [358, 359, 360, 361]; //
   const mythical = [362, 363, 364, 365]; //
   const godlike = [366, 367, 368, 369]; //
-  const ids = [common, uncommon, rare, legendary, mythical, godlike];
+  const schematicIds = [common, uncommon, rare, legendary, mythical, godlike];
   const amounts = [600, 300, 150, 0, 30, 3];
 
   const tokenIds = [];
   const tokenAmounts = [];
   const startTimes = [];
   const endTimes = [];
+  const categories = [];
 
-  for (let i = 0; i < ids.length; i++) {
+  for (let i = 0; i < schematicIds.length; i++) {
     if (amounts[i] === 0) {
       continue;
     }
-    for (let j = 0; j < ids[i].length; j++) {
-      tokenIds.push(ids[i][j]);
+    for (let j = 0; j < schematicIds[i].length; j++) {
+      const randomInt = getRandomInt(0, 86400);
+      const startTime = Math.floor(Date.now() / 1000) + 200 + randomInt;
+      const threeDays = 86400 * 3;
+      const endTime = startTime + threeDays;
+
+      tokenIds.push(schematicIds[i][j]);
       tokenAmounts.push(amounts[i]);
-      startTimes.push(Math.floor(Date.now() / 1000 + 200));
-      endTimes.push(Math.floor(Date.now() / 1000) + 8640);
+      startTimes.push(startTime);
+      endTimes.push(endTime);
+      categories.push(8); //schematics are 8 in the baazaar
     }
   }
 
@@ -88,24 +95,33 @@ async function createBatchWearableAuctions() {
     if (coreAmounts[i] === 0) {
       continue;
     }
-    const startTime =
-      Math.floor(Date.now() / 1000) + 200 + getRandomInt(0, 86400);
+
+    const randomInt = getRandomInt(0, 86400);
+
+    const startTime = Math.floor(Date.now() / 1000) + 200 + randomInt;
+    const threeDays = 86400 * 3;
+    const endTime = startTime + threeDays;
+
     tokenIds.push(coreIds[i]);
     tokenAmounts.push(coreAmounts[i]);
     startTimes.push(startTime);
-    endTimes.push(startTime + getRandomInt(0, 86400));
+    endTimes.push(endTime);
+    categories.push(11); //cores are 11 in the baazaar
   }
 
   const args: BatchERC1155AuctionsTaskArgs = {
     gbmDiamondAddress: "0xD5543237C656f25EEA69f1E247b8Fa59ba353306",
     tokenContractAddress: "0x4fDfc1B53Fd1D80d969C984ba7a8CE4c7bAaD442", // forge diamond
-    deployer: "0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF",
+    deployer: "0x8D46fd7160940d89dA026D59B2e819208E714E82",
     preset: "1",
     tokenIds: tokenIds.join(),
     tokenAmounts: tokenAmounts.join(),
     startTimes: startTimes.join(),
     endTimes: endTimes.join(),
+    categories: categories.join(),
   };
+
+  console.log("Total number of auctions to create:", tokenIds.length);
 
   await run("createBatchERC1155Auctions", args);
 }
