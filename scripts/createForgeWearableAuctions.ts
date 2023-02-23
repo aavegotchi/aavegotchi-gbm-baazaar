@@ -21,12 +21,12 @@ import { getRandomInt } from "./helperFunctions";
 
 async function createBatchWearableAuctions() {
   // schematic auction
-  const common = [350, 351, 352, 353]; //
-  const uncommon = [354, 356]; //
-  const rare = [355, 357]; //
-  const legendary = [358, 359, 360, 361]; //
-  const mythical = [362, 363, 364, 365]; //
-  const godlike = [366, 367, 368, 369]; //
+  const common = [350, 351, 352, 353]; //2400
+  const uncommon = [354, 356]; //600
+  const rare = [355, 357]; //300
+  const legendary = [358, 359, 360, 361]; //0
+  const mythical = [362, 363, 364, 365]; //120
+  const godlike = [366, 367, 368, 369]; //12
   const schematicIds = [common, uncommon, rare, legendary, mythical, godlike];
   const amounts = [600, 300, 150, 0, 30, 3];
 
@@ -89,7 +89,7 @@ async function createBatchWearableAuctions() {
     1,
     1,
     ,
-  ];
+  ]; //total = 2158
 
   for (let i = 0; i < coreIds.length; i++) {
     if (coreAmounts[i] === 0) {
@@ -117,7 +117,6 @@ async function createBatchWearableAuctions() {
     deployer: "0x8D46fd7160940d89dA026D59B2e819208E714E82",
     preset: "1",
     tokenIds: tokenIds.join(","),
-    // tokenAmounts: tokenAmounts.join(),
     tokenAmounts: Array(tokenIds.length).fill(1).join(","),
     startTimes: startTimes.join(","),
     endTimes: endTimes.join(","),
