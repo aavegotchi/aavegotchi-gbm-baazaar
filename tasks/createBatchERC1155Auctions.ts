@@ -43,10 +43,6 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
         .filter((str) => str.length > 0);
 
       console.log("token ids:", tokenIds);
-
-      // const tokenAmounts = taskArgs.tokenAmounts
-      //   .split(",")
-      //   .filter((str) => str.length > 0);
       const startTimes = taskArgs.startTimes
         .split(",")
         .filter((str) => str.length > 0);
@@ -86,17 +82,28 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
           category: categories[i],
         };
 
-        console.log("Creating auction:", auctionDetails);
+        console.log(`Deploying auction: ${i} of ${tokenIds.length}`);
+        //If auction fails, set the < 0 below to i.
+        if (i < 0) continue;
 
-        const txReceipt = await (
-          await gbm.createAuction(auctionDetails, tokenContractAddress, preset)
-        ).wait();
+        const gasFee = await signer.provider.getFeeData();
+
+        const tx = await gbm.createAuction(
+          auctionDetails,
+          tokenContractAddress,
+          preset,
+          {
+            maxFeePerGas: gasFee.lastBaseFeePerGas.mul(4),
+            maxPriorityFeePerGas: gasFee.maxPriorityFeePerGas,
+          }
+        );
+
+        const txReceipt = await tx.wait();
+
         const event = txReceipt.events.find(
           (event) => event.event === "Auction_Initialized"
         );
-        console.log(
-          `Auction initialized. auction id: ${event.args._auctionID}`
-        );
+        console.log(`Auction initialized with ID: ${event.args._auctionID}`);
       }
     }
   );
