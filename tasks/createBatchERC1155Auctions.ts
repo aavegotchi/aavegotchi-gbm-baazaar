@@ -43,12 +43,10 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
         .split(",")
         .filter((str) => str.length > 0);
 
-      console.log("token ids:", tokenIds);
       const startTimes = taskArgs.startTimes
         .split(",")
         .filter((str) => str.length > 0);
 
-      console.log("start times:", startTimes);
       const endTimes = taskArgs.endTimes
         .split(",")
         .filter((str) => str.length > 0);
@@ -56,8 +54,6 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
       const categories = taskArgs.categories
         .split(",")
         .filter((str) => str.length > 0);
-
-      console.log("caterories:", categories);
 
       const signer = await getSigner(hre, deployer);
       const erc1155 = await hre.ethers.getContractAt(
@@ -83,10 +79,12 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
 
       const batchSize = 25;
 
-      const remainingTokenIds = tokenIds.slice(3985);
-      const remainingStartTimes = startTimes.slice(3985);
-      const remainingEndTimes = endTimes.slice(3985);
-      const remainingCategories = categories.slice(3985);
+      const skip = 0;
+
+      const remainingTokenIds = tokenIds.slice(skip);
+      const remainingStartTimes = startTimes.slice(skip);
+      const remainingEndTimes = endTimes.slice(skip);
+      const remainingCategories = categories.slice(skip);
 
       const numBatches = Math.ceil(remainingTokenIds.length / batchSize);
 
@@ -95,8 +93,6 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
           i * batchSize,
           (i + 1) * batchSize
         );
-
-        console.log("batch token ids length:", batchTokenIds.length);
 
         const batchStartTimes = remainingStartTimes.slice(
           i,
@@ -115,21 +111,21 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
         const finalAddresses = [];
         const finalPresetIds = [];
 
+        //prevent undefined
         for (let j = 0; j < batchSize; j++) {
-          finalAddresses.push(tokenContractAddress);
-          finalPresetIds.push(preset);
-          finalAuctionDetails.push({
-            startTime: batchStartTimes[j],
-            endTime: batchEndTimes[j],
-            tokenAmount: 1,
-            tokenKind: "0x973bb640", //ERC1155
-            tokenID: batchTokenIds[j],
-            category: batchCategories[j],
-          });
+          if (batchTokenIds[j]) {
+            finalAddresses.push(tokenContractAddress);
+            finalPresetIds.push(preset);
+            finalAuctionDetails.push({
+              startTime: batchStartTimes[j],
+              endTime: batchEndTimes[j],
+              tokenAmount: 1,
+              tokenKind: "0x973bb640", //ERC1155
+              tokenID: batchTokenIds[j],
+              category: batchCategories[j],
+            });
+          }
         }
-
-        //If auction fails, set the < 0 below to i.
-        if (i < 0) continue;
 
         let currentGasPrice = await signer.provider.getGasPrice();
 
@@ -174,7 +170,7 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
           }
         );
 
-        // const txReceipt = await tx.wait();
+        const txReceipt = await tx.wait();
 
         // const event = txReceipt.events.find(
         //   (event) => event.event === "Auction_Initialized"
