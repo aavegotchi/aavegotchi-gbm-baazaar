@@ -18,6 +18,7 @@ import {
   CORE_PET_RARE,
 } from "../helpers/constants";
 import { getRandomInt } from "./helperFunctions";
+import { upgradeBatchCreate } from "./gbmBaazaar/upgrade-batchCreate";
 
 async function createBatchWearableAuctions() {
   // schematic auction
@@ -35,16 +36,20 @@ async function createBatchWearableAuctions() {
   const endTimes = [];
   const categories = [];
 
+  const auctionDuration = 86400 * 2;
+
+  const delayTime = 1000; //to prevent erroring
+
+  // await upgradeBatchCreate();
+
   for (let i = 0; i < schematicIds.length; i++) {
     if (amounts[i] === 0) {
       continue;
     }
     for (let j = 0; j < schematicIds[i].length; j++) {
       for (let k = 0; k < amounts[i]; k++) {
-        const randomInt = getRandomInt(0, 86400);
-        const startTime = Math.floor(Date.now() / 1000) + 200 + randomInt;
-        const threeDays = 86400 * 3;
-        const endTime = startTime + threeDays;
+        const startTime = Math.floor(Date.now() / 1000) + delayTime;
+        const endTime = startTime + auctionDuration;
 
         tokenIds.push(schematicIds[i][j]);
         startTimes.push(startTime);
@@ -97,11 +102,9 @@ async function createBatchWearableAuctions() {
     }
 
     for (let k = 0; k < coreAmounts[i]; k++) {
-      const randomInt = getRandomInt(0, 86400);
+      const startTime = Math.floor(Date.now() / 1000) + delayTime;
 
-      const startTime = Math.floor(Date.now() / 1000) + 200 + randomInt;
-      const threeDays = 86400 * 3;
-      const endTime = startTime + threeDays;
+      const endTime = startTime + auctionDuration;
 
       tokenIds.push(coreIds[i]);
       // tokenAmounts.push(coreAmounts[i]);

@@ -210,7 +210,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         InitiatorInfo calldata _info,
         address _tokenContract,
         uint256 _auctionPresetID
-    ) external returns (uint256) {
+    ) public returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
         uint256 amount = _info.tokenAmount;
@@ -246,6 +246,16 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
         s.auctionNonce++;
         return _aid;
+    }
+
+    function batchCreateAuctions(
+        InitiatorInfo[] calldata _info,
+        address[] calldata _tokenContracts,
+        uint256[] calldata _auctionPresetIDs
+    ) external {
+        for (uint256 i = 0; i < _info.length; i++) {
+            createAuction(_info[i], _tokenContracts[i], _auctionPresetIDs[i]);
+        }
     }
 
     function modifyAuction(

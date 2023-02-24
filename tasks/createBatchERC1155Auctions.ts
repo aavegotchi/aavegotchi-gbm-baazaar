@@ -4,7 +4,8 @@ import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 // @ts-ignore
 import { AuctionPreset } from "../types";
-import { getSigner } from "../scripts/helperFunctions";
+import { gasPrice, getSigner } from "../scripts/helperFunctions";
+import { BigNumber } from "ethers";
 
 export interface BatchERC1155AuctionsTaskArgs {
   gbmDiamondAddress: string;
@@ -64,7 +65,15 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
         tokenContractAddress,
         signer
       );
-      await erc1155.setApprovalForAll(gbmDiamondAddress, true);
+      //
+      // console.log("Approving:");
+
+      // const tx = await erc1155.setApprovalForAll(gbmDiamondAddress, true, {
+      //   gasPrice: gasPrice,
+      // });
+      // await tx.wait();
+
+      // console.log("Approved");
 
       const gbm = await hre.ethers.getContractAt(
         "GBMFacet",
@@ -72,38 +81,105 @@ task("createBatchERC1155Auctions", "Create batch ERC1155 in auction")
         signer
       );
 
-      for (let i = 0; i < tokenIds.length; i++) {
-        const auctionDetails = {
-          startTime: startTimes[i],
-          endTime: endTimes[i],
-          tokenAmount: 1,
-          tokenKind: "0x973bb640", //ERC1155
-          tokenID: tokenIds[i],
-          category: categories[i],
-        };
+      const batchSize = 25;
 
-        console.log(`Deploying auction: ${i} of ${tokenIds.length}`);
+      const remainingTokenIds = tokenIds.slice(3985);
+      const remainingStartTimes = startTimes.slice(3985);
+      const remainingEndTimes = endTimes.slice(3985);
+      const remainingCategories = categories.slice(3985);
+
+      const numBatches = Math.ceil(remainingTokenIds.length / batchSize);
+
+      for (let i = 0; i < numBatches; i++) {
+        const batchTokenIds = remainingTokenIds.slice(
+          i * batchSize,
+          (i + 1) * batchSize
+        );
+
+        console.log("batch token ids length:", batchTokenIds.length);
+
+        const batchStartTimes = remainingStartTimes.slice(
+          i,
+          (i + 1) * batchSize
+        );
+        const batchEndTimes = remainingEndTimes.slice(
+          i * batchSize,
+          (i + 1) * batchSize
+        );
+        const batchCategories = remainingCategories.slice(
+          i * batchSize,
+          (i + 1) * batchSize
+        );
+
+        const finalAuctionDetails = [];
+        const finalAddresses = [];
+        const finalPresetIds = [];
+
+        for (let j = 0; j < batchSize; j++) {
+          finalAddresses.push(tokenContractAddress);
+          finalPresetIds.push(preset);
+          finalAuctionDetails.push({
+            startTime: batchStartTimes[j],
+            endTime: batchEndTimes[j],
+            tokenAmount: 1,
+            tokenKind: "0x973bb640", //ERC1155
+            tokenID: batchTokenIds[j],
+            category: batchCategories[j],
+          });
+        }
+
         //If auction fails, set the < 0 below to i.
         if (i < 0) continue;
 
-        const gasFee = await signer.provider.getFeeData();
+        let currentGasPrice = await signer.provider.getGasPrice();
 
-        const tx = await gbm.createAuction(
-          auctionDetails,
-          tokenContractAddress,
-          preset,
+        const gwei300 = hre.ethers.utils.parseUnits("300", "gwei");
+        const gwei1000 = hre.ethers.utils.parseUnits("500", "gwei");
+
+        console.log("current:", currentGasPrice);
+
+        if (currentGasPrice.gt(gwei300) && currentGasPrice.lt(gwei1000)) {
+          console.log("Gas is in a nice range. Continue.");
+        } else if (currentGasPrice.lt(gwei300)) {
+          currentGasPrice = gwei300;
+          console.log("Gas is below 300. Setting to 300");
+        } else {
+          throw new Error("Gas is too high!");
+        }
+
+        console.log(`Deploying batch: ${i} of ${numBatches}`);
+
+        console.log("batch token ids:", batchTokenIds);
+        // console.log("final addresses:", finalAddresses);
+        // console.log("final presets:", finalPresetIds);
+
+        const finalGasPrice = currentGasPrice.toString();
+
+        if (BigNumber.from(finalGasPrice).gt(gwei1000)) {
+          throw new Error("Gas is too high!");
+        }
+
+        console.log("Final gas price:", finalGasPrice.toString());
+
+        // const gasFee = await signer.provider.getFeeData();
+
+        // console.log("gas fee:", gasFee.mul(2).toString());
+
+        const tx = await gbm.batchCreateAuctions(
+          finalAuctionDetails,
+          finalAddresses,
+          finalPresetIds,
           {
-            maxFeePerGas: gasFee.lastBaseFeePerGas.mul(4),
-            maxPriorityFeePerGas: gasFee.maxPriorityFeePerGas,
+            gasPrice: finalGasPrice,
           }
         );
 
-        const txReceipt = await tx.wait();
+        // const txReceipt = await tx.wait();
 
-        const event = txReceipt.events.find(
-          (event) => event.event === "Auction_Initialized"
-        );
-        console.log(`Auction initialized with ID: ${event.args._auctionID}`);
+        // const event = txReceipt.events.find(
+        //   (event) => event.event === "Auction_Initialized"
+        // );
+        // console.log(`Auction initialized with ID: ${event.args._auctionID}`);
       }
     }
   );
