@@ -12,6 +12,7 @@ import { ERC721Generic } from "../typechain/ERC721Generic";
 
 //constants for testing
 let auctionID = "13166";
+let auctionID2 = "13277";
 
 let gbmFacet: GBMFacet;
 
@@ -30,7 +31,6 @@ describe("Test Auction WarmUp Duration ", async function () {
     )) as GBMFacet;
   });
   it("For no bid auctions, tokens go back to the owner while claiming", async function () {
-    //cancel existing onchain auction
     auctionOwner = await (await gbmFacet.getAuctionInfo(auctionID)).owner;
     const tokenID = await (
       await gbmFacet.getAuctionInfo(auctionID)
@@ -43,9 +43,6 @@ describe("Test Auction WarmUp Duration ", async function () {
       "ERC721Generic",
       tokenContract
     )) as ERC721Generic;
-    console.log(auctionOwner);
-    console.log(tokenID);
-    console.log(tokenContract);
 
     const balanceBefore = await token.balanceOf(auctionOwner);
 
@@ -60,6 +57,39 @@ describe("Test Auction WarmUp Duration ", async function () {
     await gbmFacet.claim(auctionID);
 
     const balanceAfter = await token.balanceOf(auctionOwner);
+    expect(balanceAfter).equal(balanceBefore.add(1));
+  });
+
+  it("For auctions with bids, tokens go to highest bidder", async function () {
+    auctionOwner = await (await gbmFacet.getAuctionInfo(auctionID2)).owner;
+    const highestBidder = await (
+      await gbmFacet.getAuctionInfo(auctionID2)
+    ).highestBidder;
+    const tokenID = await (
+      await gbmFacet.getAuctionInfo(auctionID2)
+    ).info.tokenID;
+
+    const tokenContract = await (
+      await gbmFacet.getAuctionInfo(auctionID2)
+    ).tokenContract;
+    token = (await ethers.getContractAt(
+      "ERC721Generic",
+      tokenContract
+    )) as ERC721Generic;
+
+    const balanceBefore = await token.balanceOf(highestBidder);
+
+    const currentTimeInSeconds: BigNumber = BigNumber.from(
+      Math.floor(Date.now() / 1000)
+    );
+    const endTime = await (
+      await gbmFacet.getAuctionInfo(auctionID2)
+    ).info.endTime;
+    gbmFacet = await impersonate(auctionOwner, gbmFacet, ethers, network);
+    await warp(Number(endTime.sub(currentTimeInSeconds).add(1000)));
+    await gbmFacet.claim(auctionID2);
+
+    const balanceAfter = await token.balanceOf(highestBidder);
     expect(balanceAfter).equal(balanceBefore.add(1));
   });
 });
