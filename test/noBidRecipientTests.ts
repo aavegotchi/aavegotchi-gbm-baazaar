@@ -53,7 +53,8 @@ describe("Test Auction WarmUp Duration ", async function () {
       await gbmFacet.getAuctionInfo(auctionID)
     ).info.endTime;
     gbmFacet = await impersonate(auctionOwner, gbmFacet, ethers, network);
-    await warp(Number(endTime.sub(currentTimeInSeconds).add(1000)));
+
+    await warp(Number(endTime.sub(currentTimeInSeconds).add(1000)), ethers);
     await gbmFacet.claim(auctionID);
 
     const balanceAfter = await token.balanceOf(auctionOwner);
@@ -86,7 +87,8 @@ describe("Test Auction WarmUp Duration ", async function () {
       await gbmFacet.getAuctionInfo(auctionID2)
     ).info.endTime;
     gbmFacet = await impersonate(auctionOwner, gbmFacet, ethers, network);
-    await warp(Number(endTime.sub(currentTimeInSeconds).add(1000)));
+
+    await warp(Number(endTime.sub(currentTimeInSeconds).add(1000)), ethers);
     await gbmFacet.claim(auctionID2);
 
     const balanceAfter = await token.balanceOf(highestBidder);

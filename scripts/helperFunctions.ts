@@ -1,7 +1,7 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { Contract } from "@ethersproject/contracts";
 import { BigNumber } from "ethers";
-import { ethers } from "hardhat";
+
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DiamondLoupeFacet, OwnershipFacet } from "../typechain";
 
@@ -145,7 +145,7 @@ export function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-export async function warp(timeInSeconds: number) {
+export async function warp(timeInSeconds: number, ethers: any) {
   const newTime = await ethers.provider.send("evm_increaseTime", [
     timeInSeconds + 86,
   ]);
