@@ -168,12 +168,14 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         //remaining goes to auction owner
         IERC20(s.GHST).transfer(a.owner, toOwner);
 
+        address recipient = a.highestBidder == address(0) ? a.owner : a.highestBidder;
+
         if (a.info.tokenKind == ERC721) {
-            _sendTokens(ca, a.highestBidder, ERC721, tid, 1);
+            _sendTokens(ca, recipient, ERC721, tid, 1);
             s.erc721AuctionExists[ca][tid] = false;
         }
         if (a.info.tokenKind == ERC1155) {
-            _sendTokens(ca, a.highestBidder, ERC1155, tid, tam);
+            _sendTokens(ca, recipient, ERC1155, tid, tam);
         }
         a.biddingAllowed = false;
         emit Auction_ItemClaimed(_auctionID);
