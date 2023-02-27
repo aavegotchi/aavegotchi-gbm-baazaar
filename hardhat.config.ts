@@ -2,12 +2,11 @@
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ethers";
 import "hardhat-contract-sizer";
-import { task } from "hardhat/config";
 import * as dotenv from "dotenv";
 
 import "@nomiclabs/hardhat-etherscan";
 import "@typechain/hardhat";
-require("./tasks/createBatchERC1155Auctions");
+// require("./tasks/createBatchERC1155Auctions");
 
 dotenv.config({ path: __dirname + "/.env" });
 // require("./tasks/generateDiamondABI.js");
@@ -15,16 +14,6 @@ dotenv.config({ path: __dirname + "/.env" });
 // require("./tasks/massRegisterERC721.ts");
 // require("./tasks/deployUpgrade");
 // require("./tasks/transferOwnership");
-
-// This is a sample Buidler task. To learn how to create your own go to
-// https://buidler.dev/guides/create-task.html
-task("accounts", "Prints the list of accounts", async (args, hre) => {
-  const accounts = await hre.ethers.getSigners();
-
-  for (const account of accounts) {
-    console.log(await account.getAddress());
-  }
-});
 
 // You have to export an object to set up your config
 // This object can have the following optional entries:

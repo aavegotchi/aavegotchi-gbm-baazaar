@@ -48,14 +48,14 @@ export async function deployUpgrade() {
 
   await run("deployUpgrade", args);
 
-  gbmFacet = await impersonate(owner, gbmFacet, ethers, network);
+  // gbmFacet = await impersonate(owner, gbmFacet, ethers, network);
 
-  try {
-    await gbmFacet.claim(auctionId);
-    console.log("auction claimed");
-  } catch (error) {
-    console.log("error:", error);
-  }
+  // try {
+  //   await gbmFacet.claim(auctionId);
+  //   console.log("auction claimed");
+  // } catch (error) {
+  //   console.log("error:", error);
+  // }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
