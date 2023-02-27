@@ -1,9 +1,20 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { Contract } from "@ethersproject/contracts";
+import { BigNumber } from "ethers";
+import { ethers } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DiamondLoupeFacet, OwnershipFacet } from "../typechain";
 
 export const gasPrice = 300000000000;
+
+export interface InitiatorInfo {
+  startTime: BigNumber;
+  endTime: BigNumber;
+  tokenAmount: number;
+  category: number; //0 = portal 1 = open portal 2 = pending 3 = aavegotchi
+  tokenKind: string;
+  tokenID: BigNumber;
+}
 
 export async function impersonate(
   address: string,
@@ -132,4 +143,12 @@ export function getRandomInt(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+export async function warp(timeInSeconds: number) {
+  const newTime = await ethers.provider.send("evm_increaseTime", [
+    timeInSeconds + 86,
+  ]);
+  await ethers.provider.send("evm_mine", []);
+  return newTime;
 }
