@@ -5,27 +5,9 @@ import {
   DeployUpgradeTaskArgs,
   FacetsAndAddSelectors,
 } from "../../tasks/deployUpgrade";
-import { GBMFacet } from "../../typechain";
-import { impersonate } from "../helperFunctions";
+import { maticGBMDiamond } from "../constants";
 
 export async function deployUpgrade() {
-  const auctionId = "6771";
-  const gbmDiamond = "0xD5543237C656f25EEA69f1E247b8Fa59ba353306";
-  const owner = "0x579361d2636152df34db1d6dfd343f5037ddc71d";
-
-  let gbmFacet = (await ethers.getContractAt(
-    "GBMFacet",
-    gbmDiamond
-  )) as GBMFacet;
-
-  gbmFacet = await impersonate(owner, gbmFacet, ethers, network);
-
-  try {
-    await gbmFacet.claim(auctionId);
-  } catch (error) {
-    console.log("error:", error);
-  }
-
   const facets: FacetsAndAddSelectors[] = [
     {
       facetName: "GBMFacet",
@@ -38,7 +20,7 @@ export async function deployUpgrade() {
 
   const args: DeployUpgradeTaskArgs = {
     diamondUpgrader: "0x585E06CA576D0565a035301819FD2cfD7104c1E8",
-    diamondAddress: gbmDiamond,
+    diamondAddress: maticGBMDiamond,
     facetsAndAddSelectors: joined,
     useLedger: true,
     useMultisig: false,
