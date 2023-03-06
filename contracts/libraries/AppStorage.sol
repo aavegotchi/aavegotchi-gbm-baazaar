@@ -35,6 +35,7 @@ struct Auction {
     address tokenContract;
     InitiatorInfo info;
     Preset presets;
+    bool inGameBiddingOnly;
 }
 
 struct AppStorage {
