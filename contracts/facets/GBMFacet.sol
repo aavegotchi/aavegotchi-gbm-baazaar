@@ -35,12 +35,13 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         address _tokenContract,
         uint256 _tokenID,
         uint256 _amount,
-        bytes memory _signature
+        bytes memory _signature,
+        bool _inGame
     ) external {
         bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, _auctionID, _bidAmount, _highestBid));
         require(LibSignature.isValid(messageHash, _signature, s.backendPubKey), "bid: Invalid signature");
 
-        bid(_auctionID, _tokenContract, _tokenID, _amount, _bidAmount, _highestBid);
+        bid(_auctionID, _tokenContract, _tokenID, _amount, _bidAmount, _highestBid, _inGame);
     }
 
     /// @notice Place a GBM bid for a GBM auction
@@ -53,10 +54,15 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 _tokenID,
         uint256 _amount,
         uint256 _bidAmount,
-        uint256 _highestBid
+        uint256 _highestBid,
+        bool _inGame
     ) internal {
         Auction storage a = s.auctions[_auctionID];
         if (msg.sender == a.owner) revert("OwnerBidNotAllowed");
+        //check for ingame bidding
+        if (a.inGameBiddingOnly) {
+            if (!_inGame) revert("BidderNotInGame");
+        }
         if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
@@ -211,7 +217,8 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     function createAuction(
         InitiatorInfo calldata _info,
         address _tokenContract,
-        uint256 _auctionPresetID
+        uint256 _auctionPresetID,
+        bool _inGameBiddingOnly
     ) public returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
@@ -243,6 +250,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         a.info = _info;
         a.presets = s.auctionPresets[_auctionPresetID];
         a.biddingAllowed = true;
+        a.inGameBiddingOnly = _inGameBiddingOnly;
 
         emit Auction_Initialized(_aid, id, amount, ca, tokenKind, _auctionPresetID);
         emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
@@ -253,10 +261,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     function batchCreateAuctions(
         InitiatorInfo[] calldata _info,
         address[] calldata _tokenContracts,
-        uint256[] calldata _auctionPresetIDs
+        uint256[] calldata _auctionPresetIDs,
+        bool[] calldata _inGameBiddingOnly
     ) external {
         for (uint256 i = 0; i < _info.length; i++) {
-            createAuction(_info[i], _tokenContracts[i], _auctionPresetIDs[i]);
+            createAuction(_info[i], _tokenContracts[i], _auctionPresetIDs[i], _inGameBiddingOnly[i]);
         }
     }
 
