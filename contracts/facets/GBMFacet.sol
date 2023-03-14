@@ -16,6 +16,7 @@ import "../libraries/LibSignature.sol";
 
 import "../interfaces/IERC2981.sol";
 import "../interfaces/IMultiRoyalty.sol";
+import {LibModifiers} from "../libraries/LibModifiers.sol";
 
 //import "hardhat/console.sol";
 
@@ -59,11 +60,8 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     ) internal {
         Auction storage a = s.auctions[_auctionID];
         if (msg.sender == a.owner) revert("OwnerBidNotAllowed");
-        //check for ingame bidding
-        if (a.inGameBiddingOnly) {
-            if (!_inGame) revert("BidderNotInGame");
-        }
         if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
+        LibModifiers._assertModifiers(a.auctionModifierType, a.auctionModifierId, _inGame);
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
         if (a.info.endTime < block.timestamp) revert("AuctionEnded");
@@ -217,8 +215,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     function createAuction(
         InitiatorInfo calldata _info,
         address _tokenContract,
-        uint256 _auctionPresetID,
-        bool _inGameBiddingOnly
+        uint256 _auctionPresetID
     ) public returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
@@ -250,22 +247,79 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         a.info = _info;
         a.presets = s.auctionPresets[_auctionPresetID];
         a.biddingAllowed = true;
-        a.inGameBiddingOnly = _inGameBiddingOnly;
-
         emit Auction_Initialized(_aid, id, amount, ca, tokenKind, _auctionPresetID);
         emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
         s.auctionNonce++;
         return _aid;
     }
 
+    function createAuctionWithModifiers(
+        InitiatorInfo calldata _info,
+        address _tokenContract,
+        uint256 _auctionPresetID,
+        uint8 _auctionModifierType,
+        uint256 _auctionModifierId
+    ) public {
+        if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
+        uint256 id = _info.tokenID;
+        uint256 amount = _info.tokenAmount;
+        bytes4 tokenKind = _info.tokenKind;
+        //do whitelist check
+        if (_auctionModifierType == 2 && _auctionModifierId < 1) revert("NonExistentWhitelist");
+        uint256 _aid;
+        assert(tokenKind == ERC721 || tokenKind == ERC1155);
+        address ca = _tokenContract;
+        if (!s.contractAllowed[ca]) revert("ContractNotAllowed");
+        _validateInitialAuction(_info);
+        if (tokenKind == ERC721) {
+            if (s.erc721AuctionExists[ca][id] != false) revert("AuctionExists");
+            if (Ownable(ca).ownerOf(id) == address(0) || msg.sender != Ownable(ca).ownerOf(id)) revert("NotTokenOwner");
+            //transfer Token
+            IERC721(ca).safeTransferFrom(msg.sender, address(this), id);
+            amount = 1;
+            s.erc721AuctionExists[ca][id] = true;
+        }
+        if (tokenKind == ERC1155) {
+            if (IERC1155(ca).balanceOf(msg.sender, id) < amount) revert("InsufficientToken");
+            //transfer Token/s
+            IERC1155(ca).safeTransferFrom(msg.sender, address(this), id, amount, "");
+        }
+        _aid = s.auctionNonce;
+        //set initiator info and set bidding allowed
+        Auction storage a = s.auctions[_aid];
+        a.owner = msg.sender;
+        a.tokenContract = _tokenContract;
+        a.info = _info;
+        a.presets = s.auctionPresets[_auctionPresetID];
+        a.biddingAllowed = true;
+        if (_auctionModifierType > 0) {
+            a.auctionModifierType = _auctionModifierType;
+            a.auctionModifierId = _auctionModifierId;
+        }
+        emit Auction__InitialiazedWithModifiers(_aid, id, amount, ca, tokenKind, _auctionPresetID, _auctionModifierType, _auctionModifierId);
+        emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
+        s.auctionNonce++;
+    }
+
     function batchCreateAuctions(
         InitiatorInfo[] calldata _info,
         address[] calldata _tokenContracts,
-        uint256[] calldata _auctionPresetIDs,
-        bool[] calldata _inGameBiddingOnly
+        uint256[] calldata _auctionPresetIDs
     ) external {
         for (uint256 i = 0; i < _info.length; i++) {
-            createAuction(_info[i], _tokenContracts[i], _auctionPresetIDs[i], _inGameBiddingOnly[i]);
+            createAuction(_info[i], _tokenContracts[i], _auctionPresetIDs[i]);
+        }
+    }
+
+    function batchCreateAuctionsWithModifiers(
+        InitiatorInfo[] calldata _info,
+        address[] calldata _tokenContracts,
+        uint256[] calldata _auctionPresetIDs,
+        uint8[] calldata _auctionModifierTypes,
+        uint256[] calldata _auctionModifierId
+    ) external {
+        for (uint256 i = 0; i < _info.length; i++) {
+            createAuctionWithModifiers(_info[i], _tokenContracts[i], _auctionPresetIDs[i], _auctionModifierTypes[i], _auctionModifierId[i]);
         }
     }
 

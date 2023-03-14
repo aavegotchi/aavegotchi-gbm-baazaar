@@ -35,7 +35,14 @@ struct Auction {
     address tokenContract;
     InitiatorInfo info;
     Preset presets;
-    bool inGameBiddingOnly;
+    uint8 auctionModifierType;
+    uint256 auctionModifierId;
+}
+
+struct Whitelist {
+    address owner;
+    string name;
+    address[] addresses;
 }
 
 struct AppStorage {
@@ -54,6 +61,10 @@ struct AppStorage {
     uint128 hammerTimeDuration;
     uint128 cancellationTime;
     uint256 auctionNonce;
+    //whitelists
+    mapping(uint256 => Whitelist) whitelists;
+    mapping(uint256 => mapping(address => bool)) whitelisted;
+    uint256 nextWhitelistId;
 }
 
 contract Modifiers {
@@ -62,5 +73,13 @@ contract Modifiers {
     modifier onlyOwner() {
         LibDiamond.enforceIsContractOwner();
         _;
+    }
+}
+
+library LibAppStorage {
+    function diamondStorage() internal pure returns (AppStorage storage ds) {
+        assembly {
+            ds.slot := 0
+        }
     }
 }
