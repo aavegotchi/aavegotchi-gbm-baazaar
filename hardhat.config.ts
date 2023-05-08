@@ -9,7 +9,7 @@ import "@typechain/hardhat";
 // require("./tasks/createBatchERC1155Auctions");
 
 dotenv.config({ path: __dirname + "/.env" });
-// require("./tasks/generateDiamondABI.js");
+require("./tasks/generateDiamondABI.js");
 // require("./tasks/verifyFacet.js");
 // require("./tasks/massRegisterERC721.ts");
 // require("./tasks/deployUpgrade");
