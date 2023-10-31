@@ -39,6 +39,4 @@
   "version": "1.0.0",
   "main": "index.js",
   "repository": "git@github.com:aavegotchi/aavegotchi-gbm-baazaar.git",
-  "author": "Frank <frank.pfeift@protonmail.com>",
-  "license": "MIT"
 }
