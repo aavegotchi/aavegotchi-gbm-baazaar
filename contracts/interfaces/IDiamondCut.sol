@@ -33,6 +33,4 @@ interface IDiamondCut {
         bytes calldata _calldata
     )
         external;
-
-    event DiamondCut(FacetCut[] _diamondCut, address _init, bytes _calldata);
 }
