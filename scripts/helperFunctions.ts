@@ -1,20 +1,12 @@
 import { Signer } from "@ethersproject/abstract-signer";
-import { Contract } from "@ethersproject/contracts";
+import { Contract, ContractReceipt } from "@ethersproject/contracts";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DiamondLoupeFacet, OwnershipFacet } from "../typechain";
+import { DiamondLoupeFacet, IERC20, OwnershipFacet } from "../typechain";
+import { ghstAddress } from "./constants";
 
-export const gasPrice = 300000000000;
-
-export interface InitiatorInfo {
-  startTime: BigNumber;
-  endTime: BigNumber;
-  tokenAmount: number;
-  category: number; //0 = portal 1 = open portal 2 = pending 3 = aavegotchi
-  tokenKind: string;
-  tokenID: BigNumber;
-}
+export const gasPrice = 3000000000000;
 
 export async function impersonate(
   address: string,
@@ -26,9 +18,25 @@ export async function impersonate(
     method: "hardhat_impersonateAccount",
     params: [address],
   });
+  await network.provider.send("hardhat_setBalance", [
+    address,
+    "0x100000000000000000",
+  ]);
   let signer = await ethers.getSigner(address);
   contract = contract.connect(signer);
   return contract;
+}
+
+export function getFunctionNames(contract: Contract) {
+  const signatures = Object.keys(contract.interface.functions);
+  const selectors = signatures.reduce((acc: string[], val: string) => {
+    if (val !== "init(bytes)") {
+      const func = contract.interface.getFunction(val);
+      acc.push(func.name);
+    }
+    return acc;
+  }, []);
+  return selectors;
 }
 
 export async function resetChain(hre: any) {
@@ -108,6 +116,7 @@ export async function getDiamondSigner(
       method: "hardhat_impersonateAccount",
       params: [override ? override : owner],
     });
+
     return await hre.ethers.getSigner(override ? override : owner);
   } else if (hre.network.name === "matic") {
     return (await hre.ethers.getSigners())[0];
@@ -116,38 +125,52 @@ export async function getDiamondSigner(
   }
 }
 
-export async function getSigner(
-  hre: HardhatRuntimeEnvironment,
-  deployer: string
-) {
-  let testing = ["hardhat", "localhost"].includes(hre.network.name);
-
-  if (testing) {
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [deployer],
-    });
-    await hre.network.provider.request({
-      method: "hardhat_setBalance",
-      params: [deployer, "0x100000000000000000000000"],
-    });
-    return await hre.ethers.getSigner(deployer);
-  } else {
-    const accounts = await hre.ethers.getSigners();
-
-    return accounts[0];
-  }
+export function getCurrentTime(): BigNumber {
+  return BigNumber.from(Math.floor(Date.now() / 1000));
+}
+export interface InitiatorInfo {
+  startTime: BigNumber;
+  endTime: BigNumber;
+  tokenAmount: number;
+  category: number; //0 = portal 1 = open portal 2 = pending 3 = aavegotchi
+  tokenKind: string;
+  tokenID: BigNumber;
 }
 
-export function getRandomInt(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1) + min);
+export function getEvent(receipt: ContractReceipt, eventName: string): any {
+  const events = receipt!.events!.find((event) => event.event === eventName);
+
+  return events?.args;
+}
+
+export function toEther(amount: string) {
+  return ethers.utils.parseEther(amount);
+}
+
+export async function getBalance(
+  tokenAddress: string,
+  recipientAddress: string
+) {
+  const tokenContract = await ethers.getContractAt("IERC20", tokenAddress);
+  return await tokenContract.balanceOf(recipientAddress);
+}
+
+export async function getGHSTBalance(recipientAddress: string) {
+  const tokenContract = await ethers.getContractAt("IERC20", ghstAddress);
+  return await tokenContract.balanceOf(recipientAddress);
 }
 
 export async function warp(timeInSeconds: number) {
   const newTime = await ethers.provider.send("evm_increaseTime", [
     timeInSeconds + 86,
+  ]);
+  await ethers.provider.send("evm_mine", []);
+  return newTime;
+}
+
+export async function rewind(timeInSeconds: number) {
+  const newTime = await ethers.provider.send("evm_increaseTime", [
+    -timeInSeconds,
   ]);
   await ethers.provider.send("evm_mine", []);
   return newTime;
