@@ -36,7 +36,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 _tokenID,
         uint256 _amount,
         bytes memory _signature
-    ) external {
+    ) external virtual {
         bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, _auctionID, _bidAmount, _highestBid));
         require(LibSignature.isValid(messageHash, _signature, s.backendPubKey), "bid: Invalid signature");
 
@@ -118,7 +118,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
     }
 
-    function batchClaim(uint256[] memory _auctionIDs) external {
+    function batchClaim(uint256[] memory _auctionIDs) external virtual {
         for (uint256 index = 0; index < _auctionIDs.length; index++) {
             claim(_auctionIDs[index]);
         }
@@ -127,7 +127,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @notice Attribute a token to the winner of the auction and distribute the proceeds to the owner of this contract.
     /// throw if bidding is disabled or if the auction is not finished.
     /// @param _auctionID The auctionId of the auction to complete
-    function claim(uint256 _auctionID) public {
+    function claim(uint256 _auctionID) public virtual {
         Auction storage a = s.auctions[_auctionID];
         if (a.owner == address(0)) revert("NoAuction");
         if (a.claimed == true) revert("AuctionClaimed");
@@ -212,7 +212,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         InitiatorInfo calldata _info,
         address _tokenContract,
         uint256 _auctionPresetID
-    ) public returns (uint256) {
+    ) public virtual returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
         uint256 amount = _info.tokenAmount;
@@ -254,7 +254,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         InitiatorInfo[] calldata _info,
         address[] calldata _tokenContracts,
         uint256[] calldata _auctionPresetIDs
-    ) external {
+    ) external virtual {
         for (uint256 i = 0; i < _info.length; i++) {
             createAuction(_info[i], _tokenContracts[i], _auctionPresetIDs[i]);
         }
@@ -338,7 +338,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @notice Seller can cancel an auction during the cancellation time
     /// Throw if the token owner is not the caller of the function
     /// @param _auctionID The auctionId of the auction to cancel
-    function cancelAuction(uint256 _auctionID) public {
+    function cancelAuction(uint256 _auctionID) public virtual {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
@@ -405,7 +405,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 _total,
         address[] memory _royaltyRecipients,
         uint256[] memory _royaltyShares
-    ) internal returns (uint256 rem_) {
+    ) internal virtual returns (uint256 rem_) {
         //settle royalties if any
         uint256 totalRoyalty = 0;
         if (_royaltyRecipients.length > 0) {
