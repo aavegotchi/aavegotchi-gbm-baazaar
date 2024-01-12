@@ -38,6 +38,7 @@ contract GBMFacetExtensionOne is GBMFacet {
 
         //GBMFacetExtensionOne addition : Require the bid to be above the starting bid
         require(s.auctionsExtOne[_auctionID].startingBid <= _bidAmount, "bid: _bidAmount below starting bid");
+        require(msg.sender != s.auctions[_auctionID].highestBidder, "bid: cannot outbid oneself");
 
         bid(_auctionID, _tokenContract, _tokenID, _amount, _bidAmount, _highestBid);
     }
@@ -94,7 +95,7 @@ contract GBMFacetExtensionOne is GBMFacet {
         address,
         uint256
     ) public override pure returns (uint256){
-        return 0;
+        revert("Deprecated");
     } //Reduce code size of uneeded functions
 
     function batchCreateAuctions(
@@ -102,6 +103,7 @@ contract GBMFacetExtensionOne is GBMFacet {
         address[] calldata,
         uint256[] calldata
     ) public pure override {
+        revert("Deprecated");
     } //Reduce code size of uneeded functions
 
     /// @notice Allows the creation of new Auctions
