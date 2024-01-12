@@ -15,6 +15,17 @@ struct InitiatorInfo {
     uint256 tokenID;
 }
 
+struct InitiatorInfoExtensionOne {
+    uint80 startTime;
+    uint80 endTime;
+    uint56 tokenAmount;
+    uint8 category; //0 = portal 1 = open portal 2 = pending 3 = aavegotchi
+    bytes4 tokenKind;
+    uint256 tokenID;
+    uint96 buyItNowPrice;
+    uint96 startingBid;
+}
+
 //Generic presets
 struct Preset {
     uint64 incMin;
@@ -37,6 +48,12 @@ struct Auction {
     Preset presets;
 }
 
+struct AuctionExtensionOne{
+    uint96 buyItNowPrice;
+    uint96 startingBid;
+
+}
+
 struct AppStorage {
     address pixelcraft;
     address DAO;
@@ -53,6 +70,8 @@ struct AppStorage {
     uint128 hammerTimeDuration;
     uint128 cancellationTime;
     uint256 auctionNonce;
+    mapping(uint256 => AuctionExtensionOne) auctionsExtOne; //Empty if upgrading
+    uint256 buyItNowInvalidationThreshold; //The % (eg : 70% is 70) after which the highest bid disable the buy now price
 }
 
 contract Modifiers {
