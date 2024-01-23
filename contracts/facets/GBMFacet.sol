@@ -13,6 +13,7 @@ import "../interfaces/Ownable.sol";
 import "../libraries/AppStorage.sol";
 import "../libraries/LibDiamond.sol";
 import "../libraries/LibSignature.sol";
+import "../libraries/LibAddress.sol";
 
 import "../interfaces/IERC2981.sol";
 import "../interfaces/IMultiRoyalty.sol";
@@ -57,6 +58,15 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     ) internal {
         Auction storage a = s.auctions[_auctionID];
         if (msg.sender == a.owner) revert("OwnerBidNotAllowed");
+        if (LibAddress.isContract(msg.sender)) {
+            // check bidder is contract and support receiver functions
+            if (
+                !LibAddress.functionExists(msg.sender, "onERC1155Received(address,address,uint256,uint256,bytes)") &&
+                !LibAddress.functionExists(msg.sender, "onERC721Received(address,address,uint256,bytes)")
+            ) {
+                revert("UnableToReceiveTokens");
+            }
+        }
         if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
@@ -351,19 +361,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 tid = a.info.tokenID;
         uint256 tam = a.info.tokenAmount;
         a.claimed = true;
-        // case where no bids have been made
-        if (a.highestBid == 0) {
-            // Transfer the token to the owner/canceller
-            if (a.info.tokenKind == ERC721) {
-                _sendTokens(ca, a.owner, ERC721, tid, 1);
-                //update storage
-                s.erc721AuctionExists[ca][tid] = false;
-            }
-            if (a.info.tokenKind == ERC1155) {
-                _sendTokens(ca, a.owner, ERC1155, tid, tam);
-            }
-            emit AuctionCancelled(_auctionID, tid);
-        }
+
         //if it has a bid
         if (a.highestBid > 0) {
             //make sure auction has ended
@@ -385,19 +383,64 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             emit Auction_BidRemoved(_auctionID, a.highestBidder, a.highestBid);
 
             _settleFees(a.highestBid);
-
-            // Transfer the token back to the owner/canceller
-            if (a.info.tokenKind == ERC721) {
-                _sendTokens(ca, a.owner, ERC721, tid, 1);
-                //update storage
-                s.erc721AuctionExists[ca][tid] = false;
-            }
-            if (a.info.tokenKind == ERC1155) {
-                _sendTokens(ca, a.owner, ERC1155, tid, tam);
-            }
-
-            emit AuctionCancelled(_auctionID, tid);
         }
+
+        // Transfer the token back to the owner/canceller
+        if (a.info.tokenKind == ERC721) {
+            _sendTokens(ca, a.owner, ERC721, tid, 1);
+            //update storage
+            s.erc721AuctionExists[ca][tid] = false;
+        }
+        if (a.info.tokenKind == ERC1155) {
+            _sendTokens(ca, a.owner, ERC1155, tid, tam);
+        }
+
+        emit AuctionCancelled(_auctionID, tid);
+    }
+
+    /// @notice Return the GHST to the bidder (minus the auction fee) and NFT to owner
+    /// @param _auctionID The auction to close
+    function closeAuction(uint256 _auctionID) external onlyOwner {
+        Auction storage a = s.auctions[_auctionID];
+        //verify existence
+        if (a.owner == address(0)) revert("NoAuction");
+        //check if not claimed
+        if (a.claimed == true) revert("AuctionClaimed");
+
+        address ca = a.tokenContract;
+        uint256 tid = a.info.tokenID;
+        uint256 tam = a.info.tokenAmount;
+        a.claimed = true;
+
+        //if it has a bid
+        if (a.highestBid > 0) {
+            //make sure auction has ended
+            if (a.info.endTime > block.timestamp) revert("AuctionNotEnded");
+
+            //Fees of pixelcraft,GBM,DAO and rarityFarming
+            uint256 _auctionFees = (a.highestBid * 4) / 100;
+
+            //Refund lastHighestBidder's bid minus auction fees
+            uint256 ownerShare = a.highestBid - _auctionFees;
+            IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
+
+            //emit bidRemoval event
+            emit Auction_BidRemoved(_auctionID, a.highestBidder, a.highestBid);
+
+            _settleFees(a.highestBid);
+        }
+
+        // Transfer the token back to the owner/canceller
+        if (a.info.tokenKind == ERC721) {
+            _sendTokens(ca, a.owner, ERC721, tid, 1);
+            //update storage
+            s.erc721AuctionExists[ca][tid] = false;
+        }
+        if (a.info.tokenKind == ERC1155) {
+            _sendTokens(ca, a.owner, ERC1155, tid, tam);
+        }
+
+        emit AuctionCancelled(_auctionID, tid);
     }
 
     function _settleFeesWithRoyalty(
