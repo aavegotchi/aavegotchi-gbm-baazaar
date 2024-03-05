@@ -56,7 +56,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 _highestBid
     ) internal {
         Auction storage a = s.auctions[_auctionID];
-        if (msg.sender == a.owner) revert("OwnerBidNotAllowed");
+
+        require(a.startingBid <= _bidAmount, "bid: _bidAmount below starting bid");
+        require(msg.sender != a.highestBidder, "bid: cannot outbid oneself");
+
+    if (msg.sender == a.owner) revert("OwnerBidNotAllowed");
         if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
@@ -181,6 +185,83 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         emit Auction_ItemClaimed(_auctionID);
     }
 
+
+    /// @notice Attribute a token to the caller and distribute the proceeds to the owner of this contract.
+    /// throw if bidding is disabled or if the auction is not finished.
+    /// @param _auctionID The auctionId of the auction to complete
+    //No change necessary for this function code, but it use overriden internal and hence need overriding too in the diamond
+    function buyNow(uint256 _auctionID) public  {
+        Auction storage a = s.auctions[_auctionID];
+        if (a.owner == address(0)) revert("NoAuction");
+        if (a.claimed == true) revert("AuctionClaimed");
+
+        address ca = a.tokenContract;
+        uint256 tid = a.info.tokenID;
+        uint256 tam = a.info.tokenAmount;
+        uint256 ae1bnp = a.buyItNowPrice;
+
+        if(ae1bnp == 0) revert ("NoBuyItNowPrice");
+        if(((ae1bnp * s.buyItNowInvalidationThreshold) / 100) <= a.highestBid) revert("HighestBidTooHighToBuyNow");
+
+        if (msg.sender == a.owner) revert("OwnerBuyNowNotAllowed");
+        if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
+        //verify existence
+        if (a.owner == address(0)) revert("NoAuction");
+        if (a.info.endTime < block.timestamp) revert("AuctionEnded");
+        if (a.claimed == true) revert("AuctionClaimed");
+        if (a.biddingAllowed == false) revert("BiddingNotAllowed");
+
+        address tokenContract = a.tokenContract;
+        if (s.contractBiddingAllowed[tokenContract] == false) revert("BiddingNotAllowed");
+
+        //royalties
+        address[] memory royalties;
+        uint256[] memory royaltyShares;
+
+        //Prevents re-entrancy
+        a.claimed = true;
+
+        //Transfer the money of the buyer to the GBM Diamond
+        IERC20(s.GHST).transferFrom(msg.sender, address(this), ae1bnp);
+
+        //Refund the highest bidder
+        if (a.highestBid > 0) {
+
+            IERC20(s.GHST).transfer(a.highestBidder, a.highestBid + a.dueIncentives);
+            //emit incentive event and bidRemoval event
+            emit Auction_IncentivePaid(_auctionID, a.highestBidder,  a.dueIncentives);
+            emit Auction_BidRemoved(_auctionID, a.highestBidder, a.highestBid);
+        }
+
+        emit Auction_BoughtNow(_auctionID, msg.sender);
+
+        if (IERC165(ca).supportsInterface(0x2a55205a)) {
+            // EIP-2981 is supported
+            royalties = new address[](1);
+            royaltyShares = new uint256[](1);
+            (royalties[0], royaltyShares[0]) = IERC2981(ca).royaltyInfo(tid, ae1bnp);
+        } else if (IERC165(ca).supportsInterface(0x24d34933)) {
+            // Multi Royalty Standard supported
+            (royalties, royaltyShares) = IMultiRoyalty(ca).multiRoyaltyInfo(tid, ae1bnp);
+        }
+        uint256 toOwner = _settleFeesWithRoyalty(_auctionID, ae1bnp, royalties, royaltyShares) - a.auctionDebt - a.dueIncentives;
+
+        //remaining goes to auction owner
+        IERC20(s.GHST).transfer(msg.sender, toOwner);
+
+        address recipient = msg.sender;
+
+        if (a.info.tokenKind == ERC721) {
+            _sendTokens(ca, recipient, ERC721, tid, 1);
+            s.erc721AuctionExists[ca][tid] = false;
+        }
+        if (a.info.tokenKind == ERC1155) {
+            _sendTokens(ca, recipient, ERC1155, tid, tam);
+        }
+        a.biddingAllowed = false;
+        emit Auction_ItemClaimed(_auctionID);
+    }
+
     /// @notice Allow/disallow bidding and claiming for a whole token contract address.
     /// @param _contract The token contract the auctionned token belong to
     /// @param _value True if bidding/claiming should be allowed.
@@ -247,6 +328,26 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         emit Auction_Initialized(_aid, id, amount, ca, tokenKind, _auctionPresetID);
         emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
         s.auctionNonce++;
+
+        //In order to start an auction with a minium starting price, you need to prepay the fees
+        if(_info.startingBid != 0){
+            //Transfer the money of the seller to the GBM Diamond
+            uint256 prepaidFee = (_info.startingBid* 40) / 1000; //4% fee, hardcoded
+            IERC20(s.GHST).transferFrom(msg.sender, address(this), prepaidFee);
+
+            //Presettle the fee
+            uint256 _rem = _settleFees(_info.startingBid);
+            require(_rem == prepaidFee, "Mismatch of distributed fee and paid amount");
+            s.auctions[_aid].startingBid =  _info.startingBid;
+
+            emit Auction_StartingPriceUpdated(_aid, _info.startingBid);
+        }
+
+        if(_info.buyItNowPrice != 0){
+            s.auctions[_aid].buyItNowPrice = _info.buyItNowPrice;
+            emit Auction_BuyItNowUpdated(_aid, _info.buyItNowPrice);
+        }
+
         return _aid;
     }
 
@@ -420,9 +521,34 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
                 }
             }
         }
-        //settle other fees
-        uint256 totalFees = _settleFees(_total);
+        //settle other fees, discounting the initial, already paid, starting price
+        uint256 totalFees = _settleFees(_total - s.auctions[_auctionId].startingBid );
         rem_ = _total - (totalFees + totalRoyalty);
+    }
+
+    function setBuyNow(uint256 _auctionID, uint96 _buyItNowPrice) external{
+        Auction storage a = s.auctions[_auctionID];
+        if (a.owner == msg.sender) revert("NotAuctionOwner");
+        if (a.info.endTime < block.timestamp) revert("AuctionEnded");
+        if (a.claimed == true) revert("AuctionClaimed");
+
+        if(_buyItNowPrice != 0){
+            uint256 ae1bnp = a.buyItNowPrice;
+            if(((ae1bnp * s.buyItNowInvalidationThreshold) / 100) <= a.highestBid) revert("HighestBidTooHighToBuyNow");
+            if(ae1bnp <=  _buyItNowPrice) revert("CanOnlyLowerBuyNow");
+            a.buyItNowPrice  = _buyItNowPrice;
+
+        } else {
+            a.buyItNowPrice = 0;
+        }
+
+        emit Auction_BuyItNowUpdated(_auctionID, _buyItNowPrice);
+
+    }
+
+    //Recommended to be set to 70
+    function setBuyItNowInvalidationThreshold(uint256 _invalidationThreshold) external onlyOwner{
+        s.buyItNowInvalidationThreshold = _invalidationThreshold;
     }
 
     function _settleFees(uint256 _total) internal returns (uint256 rem_) {
@@ -529,6 +655,10 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
     function getAuctionBidMultiplier(uint256 _auctionID) public view returns (uint64) {
         return s.auctions[_auctionID].presets.bidMultiplier;
+    }
+
+    function getBuyItNowInvalidationThreshold() external view returns(uint256){
+        return s.buyItNowInvalidationThreshold;
     }
 
     function isBiddingAllowed(address _contract) public view returns (bool) {

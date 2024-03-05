@@ -13,6 +13,8 @@ struct InitiatorInfo {
     uint8 category; //0 = portal 1 = open portal 2 = pending 3 = aavegotchi
     bytes4 tokenKind;
     uint256 tokenID;
+    uint96 buyItNowPrice;
+    uint96 startingBid;
 }
 
 //Generic presets
@@ -35,6 +37,8 @@ struct Auction {
     address tokenContract;
     InitiatorInfo info;
     Preset presets;
+    uint96 buyItNowPrice;
+    uint96 startingBid;
 }
 
 struct AppStorage {
@@ -53,6 +57,7 @@ struct AppStorage {
     uint128 hammerTimeDuration;
     uint128 cancellationTime;
     uint256 auctionNonce;
+    uint256 buyItNowInvalidationThreshold; //The % (eg : 70% is 70) after which the highest bid disable the buy now price
 }
 
 contract Modifiers {
