@@ -475,7 +475,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
     function setBuyNow(uint256 _auctionID, uint96 _buyItNowPrice) external {
         Auction storage a = s.auctions[_auctionID];
-        if (a.owner == msg.sender) revert("NotAuctionOwner");
+        if (a.owner != msg.sender) revert("NotAuctionOwner");
         if (a.info.endTime < block.timestamp) revert("AuctionEnded");
         if (a.claimed == true) revert("AuctionClaimed");
 

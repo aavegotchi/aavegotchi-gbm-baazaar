@@ -4,3 +4,5 @@ export const maticGBMDiamondUpgrader =
   "0x585E06CA576D0565a035301819FD2cfD7104c1E8";
 
 export const ghstAddress = "0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7";
+export const gotchiDiamondAddress =
+  "0x86935F11C86623deC8a25696E1C19a8659CbF95d";
