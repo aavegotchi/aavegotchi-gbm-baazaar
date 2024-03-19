@@ -47,15 +47,12 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _auctionID The auction you want to bid on
     /// @param _bidAmount The amount of the ERC20 token the bid is made of. They should be withdrawable by this contract.
     /// @param _highestBid The current higest bid. Throw if incorrect.
-    function bid(
-        uint256 _auctionID,
-        address _tokenContract,
-        uint256 _tokenID,
-        uint256 _amount,
-        uint256 _bidAmount,
-        uint256 _highestBid
-    ) internal {
+    function bid(uint256 _auctionID, address _tokenContract, uint256 _tokenID, uint256 _amount, uint256 _bidAmount, uint256 _highestBid) internal {
         Auction storage a = s.auctions[_auctionID];
+
+        require(a.startingBid <= _bidAmount, "bid: _bidAmount below starting bid");
+        require(msg.sender != a.highestBidder, "bid: cannot outbid oneself");
+
         if (msg.sender == a.owner) revert("OwnerBidNotAllowed");
         if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
         //verify existence
@@ -143,42 +140,56 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             if (a.info.endTime > block.timestamp) revert("ClaimNotReady");
         }
         require(msg.sender == a.highestBidder || msg.sender == a.owner, "NotHighestBidderOrOwner");
-        address ca = a.tokenContract;
-        uint256 tid = a.info.tokenID;
-        uint256 tam = a.info.tokenAmount;
-
-        //royalties
-        address[] memory royalties;
-        uint256[] memory royaltyShares;
 
         //Prevents re-entrancy
         a.claimed = true;
 
-        if (IERC165(ca).supportsInterface(0x2a55205a)) {
-            // EIP-2981 is supported
-            royalties = new address[](1);
-            royaltyShares = new uint256[](1);
-            (royalties[0], royaltyShares[0]) = IERC2981(ca).royaltyInfo(tid, a.highestBid);
-        } else if (IERC165(ca).supportsInterface(0x24d34933)) {
-            // Multi Royalty Standard supported
-            (royalties, royaltyShares) = IMultiRoyalty(ca).multiRoyaltyInfo(tid, a.highestBid);
-        }
-        uint256 toOwner = _settleFeesWithRoyalty(_auctionID, a.highestBid, royalties, royaltyShares) - a.auctionDebt;
-
-        //remaining goes to auction owner
-        IERC20(s.GHST).transfer(a.owner, toOwner);
-
         address recipient = a.highestBidder == address(0) ? a.owner : a.highestBidder;
 
-        if (a.info.tokenKind == ERC721) {
-            _sendTokens(ca, recipient, ERC721, tid, 1);
-            s.erc721AuctionExists[ca][tid] = false;
+        _calculateRoyaltyAndSend(_auctionID, recipient, a.highestBid, 0);
+    }
+
+    /// @notice Attribute a token to the caller and distribute the proceeds to the owner of this contract.
+    /// throw if bidding is disabled or if the auction is not finished.
+    /// @param _auctionID The auctionId of the auction to complete
+    //No change necessary for this function code, but it use overriden internal and hence need overriding too in the diamond
+    function buyNow(uint256 _auctionID) public {
+        Auction storage a = s.auctions[_auctionID];
+        if (a.owner == address(0)) revert("NoAuction");
+        if (a.claimed == true) revert("AuctionClaimed");
+
+        uint256 ae1bnp = a.buyItNowPrice;
+        if (ae1bnp == 0) revert("NoBuyItNowPrice");
+        if (((ae1bnp * s.buyItNowInvalidationThreshold) / 100) <= a.highestBid) revert("HighestBidTooHighToBuyNow");
+
+        if (msg.sender == a.owner) revert("OwnerBuyNowNotAllowed");
+        if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
+        //verify existence
+        if (a.owner == address(0)) revert("NoAuction");
+        if (a.info.endTime < block.timestamp) revert("AuctionEnded");
+        if (a.claimed == true) revert("AuctionClaimed");
+        if (a.biddingAllowed == false) revert("BiddingNotAllowed");
+
+        address tokenContract = a.tokenContract;
+        if (s.contractBiddingAllowed[tokenContract] == false) revert("BiddingNotAllowed");
+
+        //Prevents re-entrancy
+        a.claimed = true;
+
+        //Transfer the money of the buyer to the GBM Diamond
+        IERC20(s.GHST).transferFrom(msg.sender, address(this), ae1bnp);
+
+        //Refund the highest bidder
+        if (a.highestBid > 0) {
+            IERC20(s.GHST).transfer(a.highestBidder, a.highestBid + a.dueIncentives);
+            //emit incentive event and bidRemoval event
+            emit Auction_IncentivePaid(_auctionID, a.highestBidder, a.dueIncentives);
+            emit Auction_BidRemoved(_auctionID, a.highestBidder, a.highestBid);
         }
-        if (a.info.tokenKind == ERC1155) {
-            _sendTokens(ca, recipient, ERC1155, tid, tam);
-        }
-        a.biddingAllowed = false;
-        emit Auction_ItemClaimed(_auctionID);
+
+        emit Auction_BoughtNow(_auctionID, msg.sender);
+
+        _calculateRoyaltyAndSend(_auctionID, msg.sender, ae1bnp, a.dueIncentives);
     }
 
     /// @notice Allow/disallow bidding and claiming for a whole token contract address.
@@ -208,11 +219,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _info A struct containing various details about the auction
     /// @param _tokenContract The contract address of the token
     /// @param _auctionPresetID The identifier of the GBMM preset to use for this auction
-    function createAuction(
-        InitiatorInfo calldata _info,
-        address _tokenContract,
-        uint256 _auctionPresetID
-    ) public returns (uint256) {
+    function createAuction(InitiatorInfo calldata _info, address _tokenContract, uint256 _auctionPresetID) public returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
         uint256 amount = _info.tokenAmount;
@@ -247,25 +254,36 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         emit Auction_Initialized(_aid, id, amount, ca, tokenKind, _auctionPresetID);
         emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
         s.auctionNonce++;
+
+        //In order to start an auction with a minium starting price, you need to prepay the fees
+        if (_info.startingBid != 0) {
+            //Transfer the money of the seller to the GBM Diamond
+            uint256 prepaidFee = (_info.startingBid * 40) / 1000; //4% fee, hardcoded
+            IERC20(s.GHST).transferFrom(msg.sender, address(this), prepaidFee);
+
+            //Presettle the fee
+            uint256 _rem = _settleFees(_info.startingBid);
+            require(_rem == prepaidFee, "Mismatch of distributed fee and paid amount");
+            s.auctions[_aid].startingBid = _info.startingBid;
+
+            emit Auction_StartingPriceUpdated(_aid, _info.startingBid);
+        }
+
+        if (_info.buyItNowPrice != 0) {
+            s.auctions[_aid].buyItNowPrice = _info.buyItNowPrice;
+            emit Auction_BuyItNowUpdated(_aid, _info.buyItNowPrice);
+        }
+
         return _aid;
     }
 
-    function batchCreateAuctions(
-        InitiatorInfo[] calldata _info,
-        address[] calldata _tokenContracts,
-        uint256[] calldata _auctionPresetIDs
-    ) external {
+    function batchCreateAuctions(InitiatorInfo[] calldata _info, address[] calldata _tokenContracts, uint256[] calldata _auctionPresetIDs) external {
         for (uint256 i = 0; i < _info.length; i++) {
             createAuction(_info[i], _tokenContracts[i], _auctionPresetIDs[i]);
         }
     }
 
-    function modifyAuction(
-        uint256 _auctionID,
-        uint80 _newEndTime,
-        uint56 _newTokenAmount,
-        bytes4 _tokenKind
-    ) external {
+    function modifyAuction(uint256 _auctionID, uint80 _newEndTime, uint56 _newTokenAmount, bytes4 _tokenKind) external {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
@@ -320,13 +338,43 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (duration > 604800) revert("DurationTooHigh");
     }
 
-    function _sendTokens(
-        address _contract,
-        address _recipient,
-        bytes4 _tokenKind,
-        uint256 _tokenID,
-        uint256 _amount
-    ) internal {
+    function _calculateRoyaltyAndSend(uint256 _auctionID, address _recipient, uint256 _salePrice, uint88 _dueIncentives) internal {
+        Auction storage a = s.auctions[_auctionID];
+        address _contract = a.tokenContract;
+        bytes4 _tokenKind = a.info.tokenKind;
+        uint256 _tokenID = a.info.tokenID;
+        uint256 _amount = a.info.tokenAmount;
+
+        //royalties
+        address[] memory royalties;
+        uint256[] memory royaltyShares;
+
+        if (IERC165(_contract).supportsInterface(0x2a55205a)) {
+            // EIP-2981 is supported
+            royalties = new address[](1);
+            royaltyShares = new uint256[](1);
+            (royalties[0], royaltyShares[0]) = IERC2981(_contract).royaltyInfo(_tokenID, _salePrice);
+        } else if (IERC165(_contract).supportsInterface(0x24d34933)) {
+            // Multi Royalty Standard supported
+            (royalties, royaltyShares) = IMultiRoyalty(_contract).multiRoyaltyInfo(_tokenID, _salePrice);
+        }
+        uint256 toOwner = _settleFeesWithRoyalty(_auctionID, _salePrice, royalties, royaltyShares) - a.auctionDebt - _dueIncentives;
+
+        //remaining goes to auction owner
+        IERC20(s.GHST).transfer(a.owner, toOwner);
+
+        if (_tokenKind == ERC721) {
+            _sendTokens(_contract, _recipient, ERC721, _tokenID, 1);
+            s.erc721AuctionExists[_contract][_tokenID] = false;
+        }
+        if (_tokenKind == ERC1155) {
+            _sendTokens(_contract, _recipient, ERC1155, _tokenID, _amount);
+        }
+        a.biddingAllowed = false;
+        emit Auction_ItemClaimed(_auctionID);
+    }
+
+    function _sendTokens(address _contract, address _recipient, bytes4 _tokenKind, uint256 _tokenID, uint256 _amount) internal {
         if (_tokenKind == ERC721) {
             IERC721(_contract).safeTransferFrom(address(this), _recipient, _tokenID, "");
         }
@@ -420,9 +468,32 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
                 }
             }
         }
-        //settle other fees
-        uint256 totalFees = _settleFees(_total);
+        //settle other fees, discounting the initial, already paid, starting price
+        uint256 totalFees = _settleFees(_total - s.auctions[_auctionId].startingBid);
         rem_ = _total - (totalFees + totalRoyalty);
+    }
+
+    function setBuyNow(uint256 _auctionID, uint96 _buyItNowPrice) external {
+        Auction storage a = s.auctions[_auctionID];
+        if (a.owner != msg.sender) revert("NotAuctionOwner");
+        if (a.info.endTime < block.timestamp) revert("AuctionEnded");
+        if (a.claimed == true) revert("AuctionClaimed");
+
+        if (_buyItNowPrice != 0) {
+            uint256 ae1bnp = a.buyItNowPrice;
+            if (((ae1bnp * s.buyItNowInvalidationThreshold) / 100) <= a.highestBid) revert("HighestBidTooHighToBuyNow");
+            if (ae1bnp <= _buyItNowPrice) revert("CanOnlyLowerBuyNow");
+            a.buyItNowPrice = _buyItNowPrice;
+        } else {
+            a.buyItNowPrice = 0;
+        }
+
+        emit Auction_BuyItNowUpdated(_auctionID, _buyItNowPrice);
+    }
+
+    //Recommended to be set to 70
+    function setBuyItNowInvalidationThreshold(uint256 _invalidationThreshold) external onlyOwner {
+        s.buyItNowInvalidationThreshold = _invalidationThreshold;
     }
 
     function _settleFees(uint256 _total) internal returns (uint256 rem_) {
@@ -451,12 +522,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         s.backendPubKey = _newPubkey;
     }
 
-    function setAddresses(
-        address _pixelcraft,
-        address _dao,
-        address _gbm,
-        address _rarityFarming
-    ) external onlyOwner {
+    function setAddresses(address _pixelcraft, address _dao, address _gbm, address _rarityFarming) external onlyOwner {
         s.pixelcraft = _pixelcraft;
         s.DAO = _dao;
         s.GBMAddress = _gbm;
@@ -531,34 +597,38 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         return s.auctions[_auctionID].presets.bidMultiplier;
     }
 
+    function getBuyItNowInvalidationThreshold() external view returns (uint256) {
+        return s.buyItNowInvalidationThreshold;
+    }
+
     function isBiddingAllowed(address _contract) public view returns (bool) {
         return s.contractBiddingAllowed[_contract];
     }
 
     function onERC721Received(
-        address, /* _operator */
-        address, /*  _from */
-        uint256, /*  _tokenId */
+        address /* _operator */,
+        address /*  _from */,
+        uint256 /*  _tokenId */,
         bytes calldata /* _data */
     ) external pure override returns (bytes4) {
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
     function onERC1155Received(
-        address, /* _operator */
-        address, /* _from */
-        uint256, /* _id */
-        uint256, /* _value */
+        address /* _operator */,
+        address /* _from */,
+        uint256 /* _id */,
+        uint256 /* _value */,
         bytes calldata /* _data */
     ) external pure override returns (bytes4) {
         return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
     }
 
     function onERC1155BatchReceived(
-        address, /* _operator */
-        address, /* _from */
-        uint256[] calldata, /* _ids */
-        uint256[] calldata, /* _values */
+        address /* _operator */,
+        address /* _from */,
+        uint256[] calldata /* _ids */,
+        uint256[] calldata /* _values */,
         bytes calldata /* _data */
     ) external pure override returns (bytes4) {
         return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));
