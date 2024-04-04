@@ -48,18 +48,13 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _bidAmount The amount of the ERC20 token the bid is made of. They should be withdrawable by this contract.
     /// @param _highestBid The current higest bid. Throw if incorrect.
     function bid(uint256 _auctionID, address _tokenContract, uint256 _tokenID, uint256 _amount, uint256 _bidAmount, uint256 _highestBid) internal {
+        _validateAuctionExistence(_auctionID);
+
         Auction storage a = s.auctions[_auctionID];
 
         require(a.startingBid <= _bidAmount, "bid: _bidAmount below starting bid");
         require(msg.sender != a.highestBidder, "bid: cannot outbid oneself");
 
-        if (msg.sender == a.owner) revert("OwnerBidNotAllowed");
-        if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
-        //verify existence
-        if (a.owner == address(0)) revert("NoAuction");
-        if (a.info.endTime < block.timestamp) revert("AuctionEnded");
-        if (a.claimed == true) revert("AuctionClaimed");
-        if (a.biddingAllowed == false) revert("BiddingNotAllowed");
         if (_bidAmount < 1) revert("NoZeroBidAmount");
         //short-circuit
         if (_highestBid != a.highestBid) revert("UnmatchedHighestBid");
@@ -154,21 +149,13 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _auctionID The auctionId of the auction to complete
     //No change necessary for this function code, but it use overriden internal and hence need overriding too in the diamond
     function buyNow(uint256 _auctionID) public {
+        _validateAuctionExistence(_auctionID);
+
         Auction storage a = s.auctions[_auctionID];
-        if (a.owner == address(0)) revert("NoAuction");
-        if (a.claimed == true) revert("AuctionClaimed");
 
         uint256 ae1bnp = a.buyItNowPrice;
         if (ae1bnp == 0) revert("NoBuyItNowPrice");
         if (((ae1bnp * s.buyItNowInvalidationThreshold) / 100) <= a.highestBid) revert("HighestBidTooHighToBuyNow");
-
-        if (msg.sender == a.owner) revert("OwnerBuyNowNotAllowed");
-        if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
-        //verify existence
-        if (a.owner == address(0)) revert("NoAuction");
-        if (a.info.endTime < block.timestamp) revert("AuctionEnded");
-        if (a.claimed == true) revert("AuctionClaimed");
-        if (a.biddingAllowed == false) revert("BiddingNotAllowed");
 
         address tokenContract = a.tokenContract;
         if (s.contractBiddingAllowed[tokenContract] == false) revert("BiddingNotAllowed");
@@ -336,6 +323,16 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 duration = _info.endTime - _info.startTime;
         if (duration < 3600) revert("DurationTooLow");
         if (duration > 604800) revert("DurationTooHigh");
+    }
+
+    function _validateAuctionExistence(uint256 _auctionID) internal view {
+        Auction memory a = s.auctions[_auctionID];
+        if (a.owner == address(0)) revert("NoAuction");
+        if (a.info.endTime < block.timestamp) revert("AuctionEnded");
+        if (a.claimed == true) revert("AuctionClaimed");
+        if (a.biddingAllowed == false) revert("BiddingNotAllowed");
+        if (msg.sender == a.owner) revert("OwnerBuyNowNotAllowed");
+        if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
     }
 
     function _calculateRoyaltyAndSend(uint256 _auctionID, address _recipient, uint256 _salePrice, uint88 _dueIncentives) internal {

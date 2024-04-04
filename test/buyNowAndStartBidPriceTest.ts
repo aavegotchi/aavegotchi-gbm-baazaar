@@ -411,6 +411,9 @@ describe("Testing start bid price and buy now logic", async function () {
       auctionId = event!.args!._auctionID;
     });
     it("Should revert if buy it now price is 0", async function () {
+      await ethers.provider.send("evm_increaseTime", [500]);
+      await ethers.provider.send("evm_mine", []);
+
       await expect(gbmFacetWithBidder.buyNow(auctionId)).to.be.revertedWith(
         "NoBuyItNowPrice"
       );
