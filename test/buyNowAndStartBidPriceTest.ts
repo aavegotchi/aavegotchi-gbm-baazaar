@@ -267,7 +267,7 @@ describe("Testing start bid price and buy now logic", async function () {
           1,
           signature
         )
-      ).to.be.revertedWith("bid: _bidAmount below starting bid");
+      ).to.be.revertedWith("BidAmountBelowStartingBid");
     });
     it("Should succeed in bid", async function () {
       const highestBid = await gbmFacet.getAuctionHighestBid(auctionId);

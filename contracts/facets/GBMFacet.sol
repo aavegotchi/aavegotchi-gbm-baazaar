@@ -52,17 +52,17 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
         Auction storage a = s.auctions[_auctionID];
 
-        require(a.startingBid <= _bidAmount, "bid: _bidAmount below starting bid");
-        require(msg.sender != a.highestBidder, "bid: cannot outbid oneself");
+        if (a.startingBid > _bidAmount) revert("BidAmountBelowStartingBid");
+        if (msg.sender == a.highestBidder) revert("SelfOutbidUnavailable");
 
         if (_bidAmount < 1) revert("NoZeroBidAmount");
         //short-circuit
         if (_highestBid != a.highestBid) revert("UnmatchedHighestBid");
 
         //Verify onchain Auction Params
-        if (a.tokenContract != _tokenContract) revert(" InvalidAuctionParams");
-        if (a.info.tokenID != _tokenID) revert(" InvalidAuctionParams");
-        if (a.info.tokenAmount != _amount) revert(" InvalidAuctionParams");
+        if (a.tokenContract != _tokenContract) revert("InvalidAuctionParams");
+        if (a.info.tokenID != _tokenID) revert("InvalidAuctionParams");
+        if (a.info.tokenAmount != _amount) revert("InvalidAuctionParams");
 
         address tokenContract = a.tokenContract;
         if (s.contractBiddingAllowed[tokenContract] == false) revert("BiddingNotAllowed");
