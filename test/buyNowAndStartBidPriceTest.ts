@@ -21,7 +21,7 @@ import {
 describe("Testing start bid price and buy now logic", async function () {
   this.timeout(30000000);
 
-  const gotchiHolderAddress = "0xd38Df837a1EAd12ee16f8b8b7E5F58703f841668";
+  const gotchiHolderAddress = "0x03b16Ab6e23BdBeEAB719d8e4C49D63674876253";
   const bidderAddress = "0x8CbF96319b3C56d50a7C82EFb6d3c46bD6f889Ba";
   let gbmFacet: GBMFacet;
   let gbmFacetWithGotchiHolder: GBMFacet;
@@ -33,7 +33,7 @@ describe("Testing start bid price and buy now logic", async function () {
   let auctionId: any;
   let gotchiHolder: any;
   let bidder: any;
-  const gotchiId = 16911;
+  const gotchiId = 13230;
   const auctionPresetId = 1;
   const backendSigner = new ethers.Wallet(process.env.SECRET);
   const startBidPrice = ethers.utils.parseEther("10");
