@@ -490,6 +490,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
     //Recommended to be set to 70
     function setBuyItNowInvalidationThreshold(uint256 _invalidationThreshold) external onlyOwner {
+        if (_invalidationThreshold >= 100) revert("Invalid Threshold");
         s.buyItNowInvalidationThreshold = _invalidationThreshold;
     }
 
