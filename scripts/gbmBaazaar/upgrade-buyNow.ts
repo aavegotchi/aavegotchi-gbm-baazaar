@@ -7,6 +7,8 @@ import {
 } from "../../tasks/deployUpgrade";
 import { gasPrice, impersonate } from "../helperFunctions";
 import { maticGBMDiamond, maticGBMDiamondUpgrader } from "../constants";
+import { GBMFacetInterface } from "../../typechain/GBMFacet";
+import { GBMFacet__factory } from "../../typechain";
 
 export async function upgradeBuyNow() {
   const OldInitiatorInfo =
@@ -34,33 +36,22 @@ export async function upgradeBuyNow() {
 
   const joined = convertFacetAndSelectorsToString(facets);
 
+  let iface: GBMFacetInterface = new ethers.utils.Interface(
+    GBMFacet__factory.abi
+  ) as GBMFacetInterface;
+  const calldata = iface.encodeFunctionData("setBuyItNowInvalidationThreshold", [70]);
+
   const args: DeployUpgradeTaskArgs = {
     diamondUpgrader: maticGBMDiamondUpgrader,
     diamondAddress: maticGBMDiamond,
     facetsAndAddSelectors: joined,
     useLedger: true,
     useMultisig: false,
-    initAddress: ethers.constants.AddressZero,
-    initCalldata: "0x",
+    initAddress: maticGBMDiamond,
+    initCalldata: calldata,
   };
 
   await run("deployUpgrade", args);
-
-  let gbmFacet = await ethers.getContractAt("GBMFacet", maticGBMDiamond);
-  gbmFacet = await impersonate(
-    maticGBMDiamondUpgrader,
-    gbmFacet,
-    ethers,
-    network
-  );
-  const tx = await gbmFacet.setBuyItNowInvalidationThreshold(70, {
-    gasPrice: gasPrice,
-  });
-  console.log("Preset corrected successfully at hash", tx.hash);
-  console.log(
-    "BuyItNowInvalidationThreshold:",
-    await gbmFacet.getBuyItNowInvalidationThreshold()
-  );
 }
 
 // We recommend this pattern to be able to use async/await everywhere
