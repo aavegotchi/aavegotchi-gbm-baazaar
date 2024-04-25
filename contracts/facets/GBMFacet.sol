@@ -658,16 +658,4 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
         return (_newBidValue * decimaledRatio) / (bidDecimals * bidDecimals);
     }
-
-    function batchFixAuctions(uint256[] calldata _auctionIds, uint256[] calldata _auctionPresetIds) external onlyOwner {
-        require(_auctionIds.length == _auctionPresetIds.length, "Invalid array length");
-        for (uint256 i = 0; i < _auctionIds.length; i++) {
-            Auction storage a = s.auctions[_auctionIds[i]];
-            a.presets = s.auctionPresets[_auctionPresetIds[i]];
-            a.info.startingBid = 0;
-            a.info.buyItNowPrice = 0;
-            a.startingBid = 0;
-            a.buyItNowPrice = 0;
-        }
-    }
 }
