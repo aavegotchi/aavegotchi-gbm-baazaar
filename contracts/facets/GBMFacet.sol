@@ -149,6 +149,22 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _auctionID The auctionId of the auction to complete
     //No change necessary for this function code, but it use overriden internal and hence need overriding too in the diamond
     function buyNow(uint256 _auctionID) public {
+        _buyNowImplementation(_auctionID, msg.sender, msg.sender);
+    }
+
+    /// @notice Attribute a token to a specified recipient and distribute the proceeds to the owner of this contract.
+    /// @param _auctionID The auctionId of the auction to complete
+    /// @param _recipient The address of the recipient who will receive the NFT
+    function buyNowFor(uint256 _auctionID, address _recipient) public {
+        require(_recipient != address(0), "Invalid recipient address");
+        _buyNowImplementation(_auctionID, msg.sender, _recipient);
+    }
+
+    /// @dev Internal function to handle the logic of buying an auction item.
+    /// @param _auctionID The ID of the auction.
+    /// @param _buyer The address of the buyer.
+    /// @param _recipient The address of the recipient of the NFT.
+    function _buyNowImplementation(uint256 _auctionID, address _buyer, address _recipient) internal {
         _validateAuctionExistence(_auctionID);
 
         Auction storage a = s.auctions[_auctionID];
@@ -160,13 +176,13 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         address tokenContract = a.tokenContract;
         if (s.contractBiddingAllowed[tokenContract] == false) revert("BiddingNotAllowed");
 
-        //Prevents re-entrancy
+        // Prevents re-entrancy
         a.claimed = true;
 
-        //Transfer the money of the buyer to the GBM Diamond
-        IERC20(s.GHST).transferFrom(msg.sender, address(this), ae1bnp);
+        // Transfer the money of the buyer to the GBM Diamond
+        IERC20(s.GHST).transferFrom(_buyer, address(this), ae1bnp);
 
-        //Refund the highest bidder
+        // Refund the highest bidder
         if (a.highestBid > 0) {
             IERC20(s.GHST).transfer(a.highestBidder, a.highestBid + a.dueIncentives);
             //emit incentive event and bidRemoval event
@@ -174,10 +190,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             emit Auction_BidRemoved(_auctionID, a.highestBidder, a.highestBid);
         }
 
-        emit Auction_BoughtNow(_auctionID, msg.sender);
+        emit Auction_BoughtNow(_auctionID, _recipient);
 
-        _calculateRoyaltyAndSend(_auctionID, msg.sender, ae1bnp, a.dueIncentives);
+        _calculateRoyaltyAndSend(_auctionID, _recipient, ae1bnp, a.dueIncentives);
     }
+
 
     /// @notice Allow/disallow bidding and claiming for a whole token contract address.
     /// @param _contract The token contract the auctionned token belong to
