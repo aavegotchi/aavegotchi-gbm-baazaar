@@ -17,6 +17,7 @@ import {
   gotchiDiamondAddress,
   maticGBMDiamond,
 } from "../scripts/constants";
+import { upgradeBuyNowFor } from "../scripts/gbmBaazaar/upgrade-buyNowFor";
 
 describe("Testing start bid price and buy now logic", async function () {
   this.timeout(30000000);
@@ -61,7 +62,7 @@ describe("Testing start bid price and buy now logic", async function () {
   let auctionInfo;
 
   before(async function () {
-    await upgradeBuyNow();
+    await upgradeBuyNowFor();
 
     const ownershipFacet = (await ethers.getContractAt(
       "OwnershipFacet",
