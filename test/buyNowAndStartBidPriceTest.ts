@@ -4,7 +4,6 @@
 //@ts-ignore
 import { ethers, network } from "hardhat";
 import { expect } from "chai";
-import { upgradeBuyNow } from "../scripts/gbmBaazaar/upgrade-buyNow";
 import { impersonate } from "../scripts/helperFunctions";
 import {
   ERC20Generic,
@@ -532,9 +531,17 @@ describe("Testing start bid price and buy now logic", async function () {
       const createEvent = receipt.events.find(
         (e) => e.event === "Auction_Initialized"
       );
-      auctionId = createEvent.args._auctionId;
-    });
+      auctionId = createEvent.args._auctionID;
 
+      // wait for auction started
+      await ethers.provider.send("evm_increaseTime", [500]);
+      await ethers.provider.send("evm_mine", []);
+    });
+    it("Should revert if the recipient address is invalid", async function () {
+      await expect(
+        gbmFacetWithBidder.buyNowFor(auctionId, ethers.constants.AddressZero)
+      ).to.be.revertedWith("Invalid recipient address");
+    });
     it("Should allow buying an NFT for a specified recipient", async function () {
       const recipient = "0xAd0CEb6Dc055477b8a737B630D6210EFa76a2265";
 
@@ -557,13 +564,7 @@ describe("Testing start bid price and buy now logic", async function () {
       );
       expect(
         auctionOwnerGhstBalanceAfter.sub(auctionOwnerGhstBalanceBefore)
-      ).to.equal(buyItNowPrice.mul(96).div(100)); // assuming the buy now price is taken at 96%
-    });
-
-    it("Should revert if the recipient address is invalid", async function () {
-      await expect(
-        gbmFacetWithBidder.buyNowFor(auctionId, ethers.constants.AddressZero)
-      ).to.be.revertedWith("Invalid recipient address");
+      ).to.equal(buyItNowPrice.mul(96).div(100).add(startBidPrice.mul(4).div(100))); // assuming the buy now price is taken at 96%
     });
   });
 });

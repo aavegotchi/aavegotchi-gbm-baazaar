@@ -14,7 +14,6 @@ export async function upgradeBuyNowFor() {
       facetName: "GBMFacet",
       addSelectors: [
         `function buyNowFor(uint256 _auctionID, address _recepient) public`,
-        `function _buyNowImplementation(uint256 _auctionID, address _recipient) internal`,
       ],
       removeSelectors: [],
     },
@@ -33,22 +32,6 @@ export async function upgradeBuyNowFor() {
   };
 
   await run("deployUpgrade", args);
-
-  let gbmFacet = await ethers.getContractAt("GBMFacet", maticGBMDiamond);
-  gbmFacet = await impersonate(
-    maticGBMDiamondUpgrader,
-    gbmFacet,
-    ethers,
-    network
-  );
-  const tx = await gbmFacet.setBuyItNowInvalidationThreshold(70, {
-    gasPrice: gasPrice,
-  });
-  console.log("Preset corrected successfully at hash", tx.hash);
-  console.log(
-    "BuyItNowInvalidationThreshold:",
-    await gbmFacet.getBuyItNowInvalidationThreshold()
-  );
 }
 
 // We recommend this pattern to be able to use async/await everywhere
