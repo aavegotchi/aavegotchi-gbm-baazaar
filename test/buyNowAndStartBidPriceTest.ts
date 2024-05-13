@@ -60,6 +60,8 @@ describe("Testing start bid price and buy now logic", async function () {
   };
 
   let auctionInfo;
+  const ghstHolderAddress = "0x434b09Cf6864451606F27eD34609e35ef5D38c50";
+  let ghstHolder;
 
   before(async function () {
     await upgradeBuyNowFor();
@@ -81,11 +83,29 @@ describe("Testing start bid price and buy now logic", async function () {
       gotchiDiamondAddress
     )) as ERC721Generic;
 
+    ghstHolder = await ethers.getSigner(ghstHolderAddress);
+    const ghstHolderBalance = await ghstERC20.balanceOf(ghstHolderAddress);
+
+    console.log("GHST Holder Balance: ", ghstHolderBalance.toString());
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [ghstHolderAddress],
+    });
+    await ghstERC20
+      .connect(ghstHolder)
+      .transfer(gotchiHolderAddress, ethers.utils.parseEther("100"));
+    await ghstERC20
+      .connect(ghstHolder)
+      .transfer(bidderAddress, ethers.utils.parseEther("100"));
+
+    console.log("HERE WORKED");
+
     await network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [bidderAddress],
     });
     bidder = await ethers.getSigner(bidderAddress);
+
     await network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [gotchiHolderAddress],
@@ -192,6 +212,7 @@ describe("Testing start bid price and buy now logic", async function () {
       const auctionOwnerGhstBalanceBefore = await ghstERC20.balanceOf(
         gotchiHolderAddress
       );
+
       const receipt = await (await gbmFacetWithBidder.claim(auctionId)).wait();
       const event = receipt!.events!.find(
         (e: any) => e.event === "Auction_ItemClaimed"
