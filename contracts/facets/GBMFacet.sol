@@ -23,9 +23,8 @@ import "../interfaces/IMultiRoyalty.sol";
 /// @dev See GBM.auction on how to use this contract
 /// @author Guillaume Gonnaud
 contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifiers {
-
     event PubkeySet(bytes _backendPubKey);
-    event AddressUpdate(address _pixelcraft, address _dao, address _gbm, address _rarityFarming);
+    event AddressUpdated(address _pixelcraft, address _dao, address _gbm, address _rarityFarming);
     event ContractWhitelisted(address indexed _tokenContract, bool indexed _allowed);
     event AuctionPresetSet(uint256 indexed _presetId, Preset _preset);
 
@@ -534,7 +533,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         s.DAO = _dao;
         s.GBMAddress = _gbm;
         s.rarityFarming = _rarityFarming;
-        emit AddressUpdate(_pixelcraft, _dao, _gbm, _rarityFarming);
+        emit AddressUpdated(_pixelcraft, _dao, _gbm, _rarityFarming);
     }
 
     function getAuctionPresets(uint256 _auctionPresetID) public view returns (Preset memory presets_) {
