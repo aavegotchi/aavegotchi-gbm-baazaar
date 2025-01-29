@@ -19,7 +19,8 @@ contract GBMDiamond {
         address _contractOwner,
         address _diamondCutFacet,
         uint128 _hammerTime,
-        uint128 _cancellationTime
+        uint128 _cancellationTime,
+        uint256 _buyItNowInvalidationThreshold
     ) payable {
         LibDiamond.setContractOwner(_contractOwner);
         // Add the diamondCut external function from the diamondCutFacet
@@ -31,6 +32,7 @@ contract GBMDiamond {
 
         s.cancellationTime = _cancellationTime;
         s.hammerTimeDuration = _hammerTime;
+        s.buyItNowInvalidationThreshold = _buyItNowInvalidationThreshold;
     }
 
     // Find facet for function that is called and execute the

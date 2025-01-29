@@ -5,7 +5,6 @@ import {
   DeployUpgradeTaskArgs,
   FacetsAndAddSelectors,
 } from "../../tasks/deployUpgrade";
-import { gasPrice, impersonate } from "../helperFunctions";
 import { maticGBMDiamond, maticGBMDiamondUpgrader } from "../constants";
 import { GBMFacetInterface } from "../../typechain/GBMFacet";
 import { GBMFacet__factory } from "../../typechain";
@@ -39,7 +38,10 @@ export async function upgradeBuyNow() {
   let iface: GBMFacetInterface = new ethers.utils.Interface(
     GBMFacet__factory.abi
   ) as GBMFacetInterface;
-  const calldata = iface.encodeFunctionData("setBuyItNowInvalidationThreshold", [70]);
+  const calldata = iface.encodeFunctionData(
+    "setBuyItNowInvalidationThreshold",
+    [70]
+  );
 
   const args: DeployUpgradeTaskArgs = {
     diamondUpgrader: maticGBMDiamondUpgrader,

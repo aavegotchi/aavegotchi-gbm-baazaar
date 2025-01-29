@@ -12,12 +12,9 @@ import "../interfaces/IERC1155TokenReceiver.sol";
 import "../interfaces/Ownable.sol";
 import "../libraries/AppStorage.sol";
 import "../libraries/LibDiamond.sol";
-import "../libraries/LibSignature.sol";
 
 import "../interfaces/IERC2981.sol";
 import "../interfaces/IMultiRoyalty.sol";
-
-//import "hardhat/console.sol";
 
 /// @title GBM auction contract
 /// @dev See GBM.auction on how to use this contract
@@ -27,19 +24,14 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _auctionID The auction you want to bid on
     /// @param _bidAmount The amount of the ERC20 token the bid is made of. They should be withdrawable by this contract.
     /// @param _highestBid The current higest bid. Throw if incorrect.
-    /// @param _signature Signature
     function commitBid(
         uint256 _auctionID,
         uint256 _bidAmount,
         uint256 _highestBid,
         address _tokenContract,
         uint256 _tokenID,
-        uint256 _amount,
-        bytes memory _signature
-    ) external {
-        bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, _auctionID, _bidAmount, _highestBid));
-        require(LibSignature.isValid(messageHash, _signature, s.backendPubKey), "bid: Invalid signature");
-
+        uint256 _amount
+    ) external payable {
         bid(_auctionID, _tokenContract, _tokenID, _amount, _bidAmount, _highestBid);
     }
 
@@ -71,8 +63,12 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
         if (tmp + getAuctionStepMin(_auctionID) >= _bidAmount * getAuctionBidDecimals(_auctionID)) revert("MinBidNotMet");
 
+        if (msg.value != _bidAmount) revert("InvalidGhstSent");
+
         //Transfer the money of the bidder to the GBM Diamond
-        IERC20(s.GHST).transferFrom(msg.sender, address(this), _bidAmount);
+        // IERC20(s.GHST).transferFrom(msg.sender, address(this), _bidAmount);
+        (bool success, ) = payable(address(this)).call{value: _bidAmount}("");
+        require(success, "GHST transfer to GBM failed");
 
         //Extend the duration time of the auction if we are close to the end
         if (getAuctionEndTime(_auctionID) < block.timestamp + getAuctionHammerTimeDuration()) {
@@ -106,7 +102,9 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
         if (previousHighestBid + duePay != 0) {
             //Refunding the previous bid as well as sending the incentives
-            IERC20(s.GHST).transfer(previousHighestBidder, previousHighestBid + duePay);
+            // IERC20(s.GHST).transfer(previousHighestBidder, previousHighestBid + duePay);
+            (success, ) = payable(previousHighestBidder).call{value: previousHighestBid + duePay}("");
+            require(success, "GHST transfer to previous high bidder failed");
         }
     }
 
@@ -148,7 +146,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// throw if bidding is disabled or if the auction is not finished.
     /// @param _auctionID The auctionId of the auction to complete
     //No change necessary for this function code, but it use overriden internal and hence need overriding too in the diamond
-    function buyNow(uint256 _auctionID) public {
+    function buyNow(uint256 _auctionID) public payable {
         _validateAuctionExistence(_auctionID);
 
         Auction storage a = s.auctions[_auctionID];
@@ -163,12 +161,18 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         //Prevents re-entrancy
         a.claimed = true;
 
+        if (msg.value != ae1bnp) revert("InvalidGhstSent");
+
         //Transfer the money of the buyer to the GBM Diamond
-        IERC20(s.GHST).transferFrom(msg.sender, address(this), ae1bnp);
+        // IERC20(s.GHST).transferFrom(msg.sender, address(this), ae1bnp);
+        (bool success, ) = payable(address(this)).call{value: ae1bnp}("");
+        require(success, "GHST transfer to GBM failed");
 
         //Refund the highest bidder
         if (a.highestBid > 0) {
-            IERC20(s.GHST).transfer(a.highestBidder, a.highestBid + a.dueIncentives);
+            // IERC20(s.GHST).transfer(a.highestBidder, a.highestBid + a.dueIncentives);
+            (success, ) = payable(a.highestBidder).call{value: a.highestBid + a.dueIncentives}("");
+            require(success, "GHST transfer to highest bidder failed");
             //emit incentive event and bidRemoval event
             emit Auction_IncentivePaid(_auctionID, a.highestBidder, a.dueIncentives);
             emit Auction_BidRemoved(_auctionID, a.highestBidder, a.highestBid);
@@ -206,7 +210,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _info A struct containing various details about the auction
     /// @param _tokenContract The contract address of the token
     /// @param _auctionPresetID The identifier of the GBMM preset to use for this auction
-    function createAuction(InitiatorInfo calldata _info, address _tokenContract, uint256 _auctionPresetID) public returns (uint256) {
+    function createAuction(InitiatorInfo calldata _info, address _tokenContract, uint256 _auctionPresetID) public payable returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
         uint256 amount = _info.tokenAmount;
@@ -246,7 +250,12 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (_info.startingBid != 0) {
             //Transfer the money of the seller to the GBM Diamond
             uint256 prepaidFee = (_info.startingBid * 40) / 1000; //4% fee, hardcoded
-            IERC20(s.GHST).transferFrom(msg.sender, address(this), prepaidFee);
+
+            if (msg.value != prepaidFee) revert("InvalidGhstSent");
+
+            // IERC20(s.GHST).transferFrom(msg.sender, address(this), prepaidFee);
+            (bool success, ) = payable(address(this)).call{value: prepaidFee}("");
+            require(success, "GHST transfer to GBM failed");
 
             //Presettle the fee
             uint256 _rem = _settleFees(_info.startingBid);
@@ -358,7 +367,9 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 toOwner = _settleFeesWithRoyalty(_auctionID, _salePrice, royalties, royaltyShares) - a.auctionDebt - _dueIncentives;
 
         //remaining goes to auction owner
-        IERC20(s.GHST).transfer(a.owner, toOwner);
+        // IERC20(s.GHST).transfer(a.owner, toOwner);
+        (bool success, ) = payable(a.owner).call{value: toOwner}("");
+        require(success, "GHST transfer to auction owner failed");
 
         if (_tokenKind == ERC721) {
             _sendTokens(_contract, _recipient, ERC721, _tokenID, 1);
@@ -420,11 +431,17 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             uint256 _auctionFees = (a.highestBid * 4) / 100;
 
             //Auction owner pays penalty fee to the GBM Contract
-            IERC20(s.GHST).transferFrom(a.owner, address(this), _auctionFees + a.dueIncentives + a.auctionDebt);
+
+            // IERC20(s.GHST).transferFrom(a.owner, address(this), _auctionFees + a.dueIncentives + a.auctionDebt);
+            (bool success, ) = payable(address(this)).call{value: _auctionFees + a.dueIncentives + a.auctionDebt}("");
+            require(success, "GHST transfer to GBM failed");
 
             //Refund lastHighestBidder's bid plus his incentives
             uint256 ownerShare = _proceeds + a.auctionDebt + a.dueIncentives;
-            IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
+            // IERC20(s.GHST).transfer(a.highestBidder, ownerShare);
+            (success, ) = payable(a.highestBidder).call{value: ownerShare}("");
+            require(success, "GHST transfer to highest bidder failed");
+
             //emit incentive event and bidRemoval event
             emit Auction_IncentivePaid(_auctionID, a.highestBidder, ownerShare - a.highestBid);
             emit Auction_BidRemoved(_auctionID, a.highestBidder, a.highestBid);
@@ -459,8 +476,12 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
             for (uint256 i = 0; i < _royaltyRecipients.length; i++) {
                 if (_royaltyShares[i] > 0) {
-                    IERC20(s.GHST).transfer(_royaltyRecipients[i], _royaltyShares[i]);
-                    emit RoyaltyPaid(_auctionId, s.GHST, _royaltyRecipients[i], _royaltyShares[i]);
+                    // IERC20(s.GHST).transfer(_royaltyRecipients[i], _royaltyShares[i]);
+                    (bool success, ) = payable(_royaltyRecipients[i]).call{value: _royaltyShares[i]}("");
+                    require(success, "GHST transfer to royalty recipient failed");
+
+                    //address(0) is used to indicate that the royalty is paid in GHST
+                    emit RoyaltyPaid(_auctionId, address(0), _royaltyRecipients[i], _royaltyShares[i]);
                     totalRoyalty += _royaltyShares[i];
                 }
             }
@@ -497,16 +518,27 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     function _settleFees(uint256 _total) internal returns (uint256 rem_) {
         //1.5% goes to pixelcraft
         uint256 pixelcraftShare = (_total * 15) / 1000;
-        IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
+        // IERC20(s.GHST).transfer(s.pixelcraft, pixelcraftShare);
+        (bool success, ) = payable(s.pixelcraft).call{value: pixelcraftShare}("");
+        require(success, "GHST transfer to pixelcraft failed");
+
         //1% goes to GBM
         uint256 GBM = (_total * 1) / 100;
-        IERC20(s.GHST).transfer(s.GBMAddress, GBM);
+        // IERC20(s.GHST).transfer(s.GBMAddress, GBM);
+        (success, ) = payable(s.GBMAddress).call{value: GBM}("");
+        require(success, "GHST transfer to GBM failed");
+
         //0.5% to DAO
         uint256 DAO = (_total * 5) / 1000;
-        IERC20(s.GHST).transfer(s.DAO, DAO);
+        // IERC20(s.GHST).transfer(s.DAO, DAO);
+        (success, ) = payable(s.DAO).call{value: DAO}("");
+        require(success, "GHST transfer to DAO failed");
+
         //1% to treasury
         uint256 rarityFarming = (_total * 1) / 100;
-        IERC20(s.GHST).transfer(s.rarityFarming, rarityFarming);
+        // IERC20(s.GHST).transfer(s.rarityFarming, rarityFarming);
+        (success, ) = payable(s.rarityFarming).call{value: rarityFarming}("");
+        require(success, "GHST transfer to rarity farming failed");
         rem_ = pixelcraftShare + GBM + DAO + rarityFarming;
     }
 
@@ -514,10 +546,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// Throw if the token owner is not the GBM smart contract
     function setAuctionPresets(uint256 _auctionPresetID, Preset calldata _preset) external onlyOwner {
         s.auctionPresets[_auctionPresetID] = _preset;
-    }
-
-    function setPubkey(bytes calldata _newPubkey) external onlyOwner {
-        s.backendPubKey = _newPubkey;
     }
 
     function setAddresses(address _pixelcraft, address _dao, address _gbm, address _rarityFarming) external onlyOwner {

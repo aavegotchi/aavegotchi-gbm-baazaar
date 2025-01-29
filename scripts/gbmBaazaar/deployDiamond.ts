@@ -74,6 +74,7 @@ export async function deployFullDiamond() {
     diamondCutFacet.address,
     1200,
     3600,
+    70,
     { gasPrice: gasPrice }
   );
   await diamond.deployed();
@@ -107,23 +108,22 @@ export async function deployFullDiamond() {
   const diamondCut = await ethers.getContractAt("IDiamondCut", diamond.address);
   let tx;
   let receipt;
-  const PK = ethers.utils.toUtf8Bytes(process.env.SECRET);
+  // const PK = ethers.utils.toUtf8Bytes(process.env.SECRET);
   //Use Matic PK
-  let backendSigner = new ethers.Wallet(PK); // PK should start with '0x'
+  // let backendSigner = new ethers.Wallet(PK); // PK should start with '0x'
 
   let functionCall = diamondInit.interface.encodeFunctionData("init", [
-    ethers.utils.hexDataSlice(backendSigner.publicKey, 1),
+    // ethers.utils.hexDataSlice(backendSigner.publicKey, 1),
     pixelcraft,
-    GHST,
     GBM,
     rarityFarming,
     DAO,
   ]);
 
-  console.log(
-    "using pubkey:",
-    ethers.utils.hexDataSlice(backendSigner.publicKey, 1)
-  );
+  // console.log(
+  //   "using pubkey:",
+  //   ethers.utils.hexDataSlice(backendSigner.publicKey, 1)
+  // );
 
   tx = await diamondCut.diamondCut(cut, diamondInit.address, functionCall, {
     gasPrice: gasPrice,
@@ -152,6 +152,8 @@ export async function deployFullDiamond() {
     await gbm.toggleContractWhitelist(tokens[i], true);
     console.log(`enabled token with address ${tokens[i]} `);
   }
+
+  return diamond.address;
 }
 
 // We recommend this pattern to be able to use async/await everywhere

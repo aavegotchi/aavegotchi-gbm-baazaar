@@ -46,7 +46,7 @@ struct AppStorage {
     address DAO;
     address GBMAddress;
     address rarityFarming;
-    address GHST;
+    // address GHST; //not needed on Geist
     mapping(address => bool) contractBiddingAllowed;
     mapping(address => bool) contractAllowed; //Token contract address=>allowed
     mapping(uint256 => Auction) auctions; //_auctionId => auctions
