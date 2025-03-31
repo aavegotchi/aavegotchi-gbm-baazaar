@@ -47,7 +47,14 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _auctionID The auction you want to bid on
     /// @param _bidAmount The amount of the ERC20 token the bid is made of. They should be withdrawable by this contract.
     /// @param _highestBid The current higest bid. Throw if incorrect.
-    function bid(uint256 _auctionID, address _tokenContract, uint256 _tokenID, uint256 _amount, uint256 _bidAmount, uint256 _highestBid) internal {
+    function bid(
+        uint256 _auctionID,
+        address _tokenContract,
+        uint256 _tokenID,
+        uint256 _amount,
+        uint256 _bidAmount,
+        uint256 _highestBid
+    ) internal {
         _validateAuctionExistence(_auctionID);
 
         Auction storage a = s.auctions[_auctionID];
@@ -144,6 +151,43 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         _calculateRoyaltyAndSend(_auctionID, recipient, a.highestBid, 0);
     }
 
+    //to be called after diamond is paused
+    function claimAll(uint256[] calldata _auctionIds) external onlyOwner {
+        for (uint256 i = 0; i < _auctionIds.length; i++) {
+            Auction storage a = s.auctions[_auctionIds[i]];
+            if (a.owner == address(0)) revert("NoAuction");
+            if (a.claimed == true) revert("AuctionClaimed");
+            //owners don't need to wait for cancellationTime
+            if (msg.sender == a.owner) {
+                if (a.info.endTime > block.timestamp) revert("ClaimNotReady");
+            }
+            require(msg.sender == a.highestBidder || msg.sender == a.owner, "NotHighestBidderOrOwner");
+
+            //Prevents re-entrancy
+            a.claimed = true;
+
+            address recipient = a.highestBidder == address(0) ? a.owner : a.highestBidder;
+
+            _calculateRoyaltyAndSend(_auctionIds[i], recipient, a.highestBid, 0);
+        }
+    }
+
+    function getAllUnclaimedAuctions() public view returns (uint256[] memory) {
+        uint256[] memory unclaimedAuctions = new uint256[](s.auctionNonce);
+        uint256 unclaimedCount = 0;
+        for (uint256 i = 0; i < s.auctionNonce; i++) {
+            if (s.auctions[i].claimed == false) {
+                unclaimedAuctions[i] = i;
+                unclaimedCount++;
+            }
+        }
+
+        assembly {
+            mstore(unclaimedAuctions, unclaimedCount)
+        }
+        return unclaimedAuctions;
+    }
+
     /// @notice Attribute a token to the caller and distribute the proceeds to the owner of this contract.
     /// throw if bidding is disabled or if the auction is not finished.
     /// @param _auctionID The auctionId of the auction to complete
@@ -206,7 +250,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _info A struct containing various details about the auction
     /// @param _tokenContract The contract address of the token
     /// @param _auctionPresetID The identifier of the GBMM preset to use for this auction
-    function createAuction(InitiatorInfo calldata _info, address _tokenContract, uint256 _auctionPresetID) public returns (uint256) {
+    function createAuction(
+        InitiatorInfo calldata _info,
+        address _tokenContract,
+        uint256 _auctionPresetID
+    ) public diamondPaused returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
         uint256 amount = _info.tokenAmount;
@@ -264,13 +312,22 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         return _aid;
     }
 
-    function batchCreateAuctions(InitiatorInfo[] calldata _info, address[] calldata _tokenContracts, uint256[] calldata _auctionPresetIDs) external {
+    function batchCreateAuctions(
+        InitiatorInfo[] calldata _info,
+        address[] calldata _tokenContracts,
+        uint256[] calldata _auctionPresetIDs
+    ) external {
         for (uint256 i = 0; i < _info.length; i++) {
             createAuction(_info[i], _tokenContracts[i], _auctionPresetIDs[i]);
         }
     }
 
-    function modifyAuction(uint256 _auctionID, uint80 _newEndTime, uint56 _newTokenAmount, bytes4 _tokenKind) external {
+    function modifyAuction(
+        uint256 _auctionID,
+        uint80 _newEndTime,
+        uint56 _newTokenAmount,
+        bytes4 _tokenKind
+    ) external diamondPaused {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
@@ -335,7 +392,12 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         if (a.info.startTime > block.timestamp) revert("AuctionNotStarted");
     }
 
-    function _calculateRoyaltyAndSend(uint256 _auctionID, address _recipient, uint256 _salePrice, uint88 _dueIncentives) internal {
+    function _calculateRoyaltyAndSend(
+        uint256 _auctionID,
+        address _recipient,
+        uint256 _salePrice,
+        uint88 _dueIncentives
+    ) internal {
         Auction storage a = s.auctions[_auctionID];
         address _contract = a.tokenContract;
         bytes4 _tokenKind = a.info.tokenKind;
@@ -371,7 +433,13 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         emit Auction_ItemClaimed(_auctionID);
     }
 
-    function _sendTokens(address _contract, address _recipient, bytes4 _tokenKind, uint256 _tokenID, uint256 _amount) internal {
+    function _sendTokens(
+        address _contract,
+        address _recipient,
+        bytes4 _tokenKind,
+        uint256 _tokenID,
+        uint256 _amount
+    ) internal {
         if (_tokenKind == ERC721) {
             IERC721(_contract).safeTransferFrom(address(this), _recipient, _tokenID, "");
         }
@@ -383,7 +451,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @notice Seller can cancel an auction during the cancellation time
     /// Throw if the token owner is not the caller of the function
     /// @param _auctionID The auctionId of the auction to cancel
-    function cancelAuction(uint256 _auctionID) public {
+    function cancelAuction(uint256 _auctionID) public diamondPaused {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
@@ -520,7 +588,12 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         s.backendPubKey = _newPubkey;
     }
 
-    function setAddresses(address _pixelcraft, address _dao, address _gbm, address _rarityFarming) external onlyOwner {
+    function setAddresses(
+        address _pixelcraft,
+        address _dao,
+        address _gbm,
+        address _rarityFarming
+    ) external onlyOwner {
         s.pixelcraft = _pixelcraft;
         s.DAO = _dao;
         s.GBMAddress = _gbm;
@@ -604,29 +677,29 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     }
 
     function onERC721Received(
-        address /* _operator */,
-        address /*  _from */,
-        uint256 /*  _tokenId */,
+        address, /* _operator */
+        address, /*  _from */
+        uint256, /*  _tokenId */
         bytes calldata /* _data */
     ) external pure override returns (bytes4) {
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
     function onERC1155Received(
-        address /* _operator */,
-        address /* _from */,
-        uint256 /* _id */,
-        uint256 /* _value */,
+        address, /* _operator */
+        address, /* _from */
+        uint256, /* _id */
+        uint256, /* _value */
         bytes calldata /* _data */
     ) external pure override returns (bytes4) {
         return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
     }
 
     function onERC1155BatchReceived(
-        address /* _operator */,
-        address /* _from */,
-        uint256[] calldata /* _ids */,
-        uint256[] calldata /* _values */,
+        address, /* _operator */
+        address, /* _from */
+        uint256[] calldata, /* _ids */
+        uint256[] calldata, /* _values */
         bytes calldata /* _data */
     ) external pure override returns (bytes4) {
         return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));
