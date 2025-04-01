@@ -157,11 +157,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             Auction storage a = s.auctions[_auctionIds[i]];
             if (a.owner == address(0)) revert("NoAuction");
             if (a.claimed == true) revert("AuctionClaimed");
-            //owners don't need to wait for cancellationTime
-            if (msg.sender == a.owner) {
-                if (a.info.endTime > block.timestamp) revert("ClaimNotReady");
-            }
-            require(msg.sender == a.highestBidder || msg.sender == a.owner, "NotHighestBidderOrOwner");
 
             //Prevents re-entrancy
             a.claimed = true;
