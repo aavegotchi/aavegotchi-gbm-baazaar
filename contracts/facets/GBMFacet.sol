@@ -238,7 +238,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @param _info A struct containing various details about the auction
     /// @param _tokenContract The contract address of the token
     /// @param _auctionPresetID The identifier of the GBMM preset to use for this auction
-    function createAuction(InitiatorInfo calldata _info, address _tokenContract, uint256 _auctionPresetID) public diamondPaused returns (uint256) {
+    function createAuction(InitiatorInfo calldata _info, address _tokenContract, uint256 _auctionPresetID) public diamondNotPaused returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
         uint256 amount = _info.tokenAmount;
@@ -302,7 +302,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
     }
 
-    function modifyAuction(uint256 _auctionID, uint80 _newEndTime, uint56 _newTokenAmount, bytes4 _tokenKind) external diamondPaused {
+    function modifyAuction(uint256 _auctionID, uint80 _newEndTime, uint56 _newTokenAmount, bytes4 _tokenKind) external diamondNotPaused {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
@@ -415,7 +415,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @notice Seller can cancel an auction during the cancellation time
     /// Throw if the token owner is not the caller of the function
     /// @param _auctionID The auctionId of the auction to cancel
-    function cancelAuction(uint256 _auctionID) public diamondPaused {
+    function cancelAuction(uint256 _auctionID) public diamondNotPaused {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
