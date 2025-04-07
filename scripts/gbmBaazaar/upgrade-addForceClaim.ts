@@ -12,8 +12,8 @@ export async function upgradeAddClaimAll() {
     {
       facetName: "GBMFacet",
       addSelectors: [
-        `function claimAll(uint256[] calldata _auctionIds) external`,
-        `function getAllUnclaimedAuctions() public view returns (uint256[] memory)`,
+        // `function claimAll(uint256[] calldata _auctionIds) external`,
+        // `function getAllUnclaimedAuctions() public view returns (uint256[] memory)`,
       ],
       removeSelectors: [],
     },
