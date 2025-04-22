@@ -165,7 +165,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 unclaimedCount = 0;
         for (uint256 i = 0; i < s.auctionNonce; i++) {
             if (s.auctions[i].claimed == false) {
-                unclaimedAuctions[i] = i;
+                unclaimedAuctions[unclaimedCount] = i;
                 unclaimedCount++;
             }
         }
