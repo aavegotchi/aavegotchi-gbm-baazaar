@@ -16,6 +16,7 @@ import "../libraries/LibSignature.sol";
 
 import "../interfaces/IERC2981.sol";
 import "../interfaces/IMultiRoyalty.sol";
+import "./GBMViewFacet.sol";
 
 //import "hardhat/console.sol";
 
@@ -23,6 +24,11 @@ import "../interfaces/IMultiRoyalty.sol";
 /// @dev See GBM.auction on how to use this contract
 /// @author Guillaume Gonnaud
 contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifiers {
+
+    function gbmViewsFacet() internal view returns (GBMViewFacet) {
+        return GBMViewFacet(address(this));
+    }
+
     /// @notice Place a GBM bid for a GBM auction
     /// @param _auctionID The auction you want to bid on
     /// @param _bidAmount The amount of the ERC20 token the bid is made of. They should be withdrawable by this contract.
@@ -67,16 +73,16 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         address tokenContract = a.tokenContract;
         if (s.contractBiddingAllowed[tokenContract] == false) revert("BiddingNotAllowed");
 
-        uint256 tmp = _highestBid * getAuctionBidDecimals(_auctionID);
+        uint256 tmp = _highestBid * gbmViewsFacet().getAuctionBidDecimals(_auctionID);
 
-        if (tmp + getAuctionStepMin(_auctionID) >= _bidAmount * getAuctionBidDecimals(_auctionID)) revert("MinBidNotMet");
+        if (tmp + gbmViewsFacet().getAuctionStepMin(_auctionID) >= _bidAmount * gbmViewsFacet().getAuctionBidDecimals(_auctionID)) revert("MinBidNotMet");
 
         //Transfer the money of the bidder to the GBM Diamond
         IERC20(s.GHST).transferFrom(msg.sender, address(this), _bidAmount);
 
         //Extend the duration time of the auction if we are close to the end
-        if (getAuctionEndTime(_auctionID) < block.timestamp + getAuctionHammerTimeDuration()) {
-            a.info.endTime = uint80(block.timestamp + getAuctionHammerTimeDuration());
+        if (gbmViewsFacet().getAuctionEndTime(_auctionID) < block.timestamp + gbmViewsFacet().getAuctionHammerTimeDuration()) {
+            a.info.endTime = uint80(block.timestamp + gbmViewsFacet().getAuctionHammerTimeDuration());
             emit Auction_EndTimeUpdated(_auctionID, a.info.endTime);
         }
 
@@ -232,13 +238,17 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
     }
 
+    function toggleCreateAuctionAllowed() external onlyOwner {
+        s.createAuctionAllowed = !s.createAuctionAllowed;
+    }
+
     /// @notice Allows the creation of new Auctions
     /// @dev Will throw if the auction preset does not exist
     /// @dev For ERC721 auctions, will throw if that tokenId is already in an unsettled auction
     /// @param _info A struct containing various details about the auction
     /// @param _tokenContract The contract address of the token
     /// @param _auctionPresetID The identifier of the GBMM preset to use for this auction
-    function createAuction(InitiatorInfo calldata _info, address _tokenContract, uint256 _auctionPresetID) public diamondNotPaused returns (uint256) {
+    function createAuction(InitiatorInfo calldata _info, address _tokenContract, uint256 _auctionPresetID) public createAuctionAllowed diamondNotPaused returns (uint256) {
         if (s.auctionPresets[_auctionPresetID].incMin < 1) revert("UndefinedPreset");
         uint256 id = _info.tokenID;
         uint256 amount = _info.tokenAmount;
@@ -271,7 +281,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         a.biddingAllowed = true;
 
         emit Auction_Initialized(_aid, id, amount, ca, tokenKind, _auctionPresetID);
-        emit Auction_StartTimeUpdated(_aid, getAuctionStartTime(_aid), getAuctionEndTime(_aid));
+        emit Auction_StartTimeUpdated(_aid, gbmViewsFacet().getAuctionStartTime(_aid), gbmViewsFacet().getAuctionEndTime(_aid));
         s.auctionNonce++;
 
         //In order to start an auction with a minium starting price, you need to prepay the fees
@@ -446,7 +456,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
             //make sure auction has ended
             if (a.info.endTime > block.timestamp) revert("AuctionNotEnded");
             //can only cancel during cancellation period
-            if (getAuctionEndTime(_auctionID) + s.cancellationTime < block.timestamp) revert("CancellationTimeExceeded");
+            if (gbmViewsFacet().getAuctionEndTime(_auctionID) + s.cancellationTime < block.timestamp) revert("CancellationTimeExceeded");
             uint256 _proceeds = a.highestBid - a.auctionDebt;
             //Fees of pixelcraft,GBM,DAO and rarityFarming
             uint256 _auctionFees = (a.highestBid * 4) / 100;
@@ -559,82 +569,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         s.rarityFarming = _rarityFarming;
     }
 
-    function getAuctionPresets(uint256 _auctionPresetID) public view returns (Preset memory presets_) {
-        presets_ = s.auctionPresets[_auctionPresetID];
-    }
-
-    function getAuctionInfo(uint256 _auctionID) external view returns (Auction memory auctionInfo_) {
-        auctionInfo_ = s.auctions[_auctionID];
-    }
-
-    function getAuctionHighestBidder(uint256 _auctionID) external view returns (address) {
-        return s.auctions[_auctionID].highestBidder;
-    }
-
-    function getAuctionHighestBid(uint256 _auctionID) external view returns (uint256) {
-        return s.auctions[_auctionID].highestBid;
-    }
-
-    function getAuctionDebt(uint256 _auctionID) external view returns (uint256) {
-        return s.auctions[_auctionID].auctionDebt;
-    }
-
-    function getAuctionDueIncentives(uint256 _auctionID) external view returns (uint256) {
-        return s.auctions[_auctionID].dueIncentives;
-    }
-
-    function getTokenKind(uint256 _auctionID) external view returns (bytes4) {
-        return s.auctions[_auctionID].info.tokenKind;
-    }
-
-    function getTokenId(uint256 _auctionID) external view returns (uint256) {
-        return s.auctions[_auctionID].info.tokenID;
-    }
-
-    function getContractAddress(uint256 _auctionID) external view returns (address) {
-        return s.auctions[_auctionID].tokenContract;
-    }
-
-    function getAuctionStartTime(uint256 _auctionID) public view returns (uint256) {
-        return s.auctions[_auctionID].info.startTime;
-    }
-
-    function getAuctionEndTime(uint256 _auctionID) public view returns (uint256) {
-        return s.auctions[_auctionID].info.endTime;
-    }
-
-    function getAuctionHammerTimeDuration() public view returns (uint256) {
-        return s.hammerTimeDuration;
-    }
-
-    function getAuctionBidDecimals(uint256 _auctionID) public view returns (uint256) {
-        return s.auctions[_auctionID].presets.bidDecimals;
-    }
-
-    function getAuctionStepMin(uint256 _auctionID) public view returns (uint64) {
-        return s.auctions[_auctionID].presets.stepMin;
-    }
-
-    function getAuctionIncMin(uint256 _auctionID) public view returns (uint64) {
-        return s.auctions[_auctionID].presets.incMin;
-    }
-
-    function getAuctionIncMax(uint256 _auctionID) public view returns (uint64) {
-        return s.auctions[_auctionID].presets.incMax;
-    }
-
-    function getAuctionBidMultiplier(uint256 _auctionID) public view returns (uint64) {
-        return s.auctions[_auctionID].presets.bidMultiplier;
-    }
-
-    function getBuyItNowInvalidationThreshold() external view returns (uint256) {
-        return s.buyItNowInvalidationThreshold;
-    }
-
-    function isBiddingAllowed(address _contract) public view returns (bool) {
-        return s.contractBiddingAllowed[_contract];
-    }
-
     function onERC721Received(
         address /* _operator */,
         address /*  _from */,
@@ -667,11 +601,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @notice Calculating and setting how much payout a bidder will receive if outbid
     /// @dev Only callable internally
     function calculateIncentives(uint256 _auctionID, uint256 _newBidValue) internal view returns (uint256) {
-        uint256 bidDecimals = getAuctionBidDecimals(_auctionID);
-        uint256 bidIncMax = getAuctionIncMax(_auctionID);
+        uint256 bidDecimals = gbmViewsFacet().getAuctionBidDecimals(_auctionID);
+        uint256 bidIncMax = gbmViewsFacet().getAuctionIncMax(_auctionID);
 
         //Init the baseline bid we need to perform against
-        uint256 baseBid = (s.auctions[_auctionID].highestBid * (bidDecimals + getAuctionStepMin(_auctionID))) / bidDecimals;
+        uint256 baseBid = (s.auctions[_auctionID].highestBid * (bidDecimals + gbmViewsFacet().getAuctionStepMin(_auctionID))) / bidDecimals;
 
         //If no bids are present, set a basebid value of 1 to prevent divide by 0 errors
         if (baseBid == 0) {
@@ -679,9 +613,9 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         }
 
         //Ratio of newBid compared to expected minBid
-        uint256 decimaledRatio = (bidDecimals * getAuctionBidMultiplier(_auctionID) * (_newBidValue - baseBid)) /
+        uint256 decimaledRatio = (bidDecimals * gbmViewsFacet().getAuctionBidMultiplier(_auctionID) * (_newBidValue - baseBid)) /
             baseBid +
-            getAuctionIncMin(_auctionID) *
+            gbmViewsFacet().getAuctionIncMin(_auctionID) *
             bidDecimals;
 
         if (decimaledRatio > bidDecimals * bidIncMax) {

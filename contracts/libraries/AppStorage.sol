@@ -59,8 +59,8 @@ struct AppStorage {
     uint256 auctionNonce;
     uint256 buyItNowInvalidationThreshold; //The % (eg : 70% is 70) after which the highest bid disable the buy now price
     bool diamondPaused;
+    bool createAuctionAllowed;
 }
-
 contract Modifiers {
     AppStorage internal s;
 
@@ -74,6 +74,11 @@ contract Modifiers {
         if (msg.sender != LibDiamond.contractOwner()) {
             require(!s.diamondPaused, "AppStorage: Diamond paused");
         }
+        _;
+    }
+
+    modifier createAuctionAllowed() {
+        require(s.createAuctionAllowed, "AppStorage: Auction creation is paused");
         _;
     }
 }
