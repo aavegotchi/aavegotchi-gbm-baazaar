@@ -23,7 +23,7 @@ export async function lockDiamonds() {
     signer = new LedgerSigner(ethers.provider, "m/44'/60'/1'/0/0");
   } else throw Error("Incorrect network selected");
 
-  let tx = await gbmDiamond.disableAuctionCreation();
+  let tx = await gbmDiamond.toggleCreateAuctionAllowed();
   await tx.wait();
   console.log("GBM diamond paused at txn", tx.hash);
   console.log("Diamond paused");
