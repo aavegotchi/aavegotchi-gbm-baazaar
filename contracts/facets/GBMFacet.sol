@@ -296,13 +296,17 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         return _aid;
     }
 
-    function batchCreateAuctions(InitiatorInfo[] calldata _info, address[] calldata _tokenContracts, uint256[] calldata _auctionPresetIDs) external {
+    function batchCreateAuctions(
+        InitiatorInfo[] calldata _info,
+        address[] calldata _tokenContracts,
+        uint256[] calldata _auctionPresetIDs
+    ) external diamondNotPaused {
         for (uint256 i = 0; i < _info.length; i++) {
             createAuction(_info[i], _tokenContracts[i], _auctionPresetIDs[i]);
         }
     }
 
-    function modifyAuction(uint256 _auctionID, uint80 _newEndTime, uint56 _newTokenAmount, bytes4 _tokenKind) external diamondNotPaused {
+    function modifyAuction(uint256 _auctionID, uint80 _newEndTime, uint56 _newTokenAmount, bytes4 _tokenKind) external {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
@@ -415,7 +419,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// @notice Seller can cancel an auction during the cancellation time
     /// Throw if the token owner is not the caller of the function
     /// @param _auctionID The auctionId of the auction to cancel
-    function cancelAuction(uint256 _auctionID) public diamondNotPaused {
+    function cancelAuction(uint256 _auctionID) public {
         Auction storage a = s.auctions[_auctionID];
         //verify existence
         if (a.owner == address(0)) revert("NoAuction");
