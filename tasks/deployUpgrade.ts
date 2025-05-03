@@ -20,6 +20,8 @@ import { LedgerSigner } from "@anders-t/ethers-ledger";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
+import { mine } from "@nomicfoundation/hardhat-network-helpers";
+
 export interface FacetsAndAddSelectors {
   facetName: string;
   addSelectors: string[];
@@ -114,6 +116,12 @@ task(
       const initAddress = taskArgs.initAddress;
       const initCalldata = taskArgs.initCalldata;
 
+      const testing = ["hardhat", "localhost"].includes(hre.network.name);
+
+      if (testing) {
+        await mine();
+      }
+
       //Instantiate the Signer
       let signer: Signer;
       const owner = await (
@@ -122,7 +130,6 @@ task(
           diamondAddress
         )) as OwnershipFacet
       ).owner();
-      const testing = ["hardhat", "localhost"].includes(hre.network.name);
 
       if (testing) {
         await hre.network.provider.request({

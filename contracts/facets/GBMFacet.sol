@@ -695,7 +695,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         return (_newBidValue * decimaledRatio) / (bidDecimals * bidDecimals);
     }
 
-    function toggleDiamondPause() external onlyOwner {
-        s.diamondPaused = !s.diamondPaused;
+    function toggleDiamondPause(bool _pause) external onlyOwner {
+        s.diamondPaused = _pause;
     }
 }

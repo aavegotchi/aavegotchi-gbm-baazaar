@@ -6,17 +6,27 @@ import {
   FacetsAndAddSelectors,
 } from "../../tasks/deployUpgrade";
 import { maticGBMDiamond, maticGBMDiamondUpgrader } from "../constants";
+import { GBMFacetInterface } from "../../typechain/GBMFacet";
+import { GBMFacet__factory } from "../../typechain";
 
 export async function upgradeAddPauseToggle() {
   const facets: FacetsAndAddSelectors[] = [
     {
       facetName: "GBMFacet",
-      addSelectors: [`function toggleDiamondPause() external onlyOwner`],
+      addSelectors: [
+        `function toggleDiamondPause(bool _pause) external onlyOwner`,
+      ],
       removeSelectors: [],
     },
   ];
 
   const joined = convertFacetAndSelectorsToString(facets);
+
+  let iface: GBMFacetInterface = new ethers.utils.Interface(
+    GBMFacet__factory.abi
+  ) as GBMFacetInterface;
+
+  const calldata = iface.encodeFunctionData("toggleDiamondPause", [true]);
 
   const args: DeployUpgradeTaskArgs = {
     diamondUpgrader: maticGBMDiamondUpgrader,
@@ -24,8 +34,8 @@ export async function upgradeAddPauseToggle() {
     facetsAndAddSelectors: joined,
     useLedger: true,
     useMultisig: false,
-    initAddress: ethers.constants.AddressZero,
-    initCalldata: "0x",
+    initAddress: maticGBMDiamond,
+    initCalldata: calldata,
   };
 
   await run("deployUpgrade", args);
