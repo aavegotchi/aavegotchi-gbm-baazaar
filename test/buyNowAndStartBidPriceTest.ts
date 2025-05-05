@@ -4,7 +4,6 @@
 //@ts-ignore
 import { ethers, network } from "hardhat";
 import { expect } from "chai";
-import { upgradeBuyNow } from "../scripts/gbmBaazaar/upgrade-buyNow";
 import { impersonate } from "../scripts/helperFunctions";
 import {
   ERC20Generic,
@@ -17,6 +16,7 @@ import {
   gotchiDiamondAddress,
   maticGBMDiamond,
 } from "../scripts/constants";
+import { upgradeBuyNowFor } from "../scripts/gbmBaazaar/upgrade-buyNowFor";
 
 describe("Testing start bid price and buy now logic", async function () {
   this.timeout(30000000);
@@ -33,6 +33,7 @@ describe("Testing start bid price and buy now logic", async function () {
   let auctionId: any;
   let gotchiHolder: any;
   let bidder: any;
+
   const gotchiId = 13230;
   const auctionPresetId = 1;
   const backendSigner = new ethers.Wallet(process.env.SECRET);
@@ -45,6 +46,7 @@ describe("Testing start bid price and buy now logic", async function () {
     .mul(70)
     .div(100)
     .add(ethers.utils.parseEther("1"));
+
   const auctionInfoData = {
     // startTime: Math.floor(Date.now() / 1000 + 200),
     // endTime: Math.floor(Date.now() / 1000) + 8640,
@@ -52,13 +54,16 @@ describe("Testing start bid price and buy now logic", async function () {
     tokenKind: "0x73ad2146", //ERC721
     tokenID: gotchiId,
     category: 3,
-    buyItNowPrice: buyItNowPrice,
     startingBid: startBidPrice,
+    buyItNowPrice: buyItNowPrice,
   };
+
   let auctionInfo;
+  const ghstHolderAddress = "0x434b09Cf6864451606F27eD34609e35ef5D38c50";
+  let ghstHolder;
 
   before(async function () {
-    await upgradeBuyNow();
+    await upgradeBuyNowFor();
 
     const ownershipFacet = (await ethers.getContractAt(
       "OwnershipFacet",
@@ -77,11 +82,29 @@ describe("Testing start bid price and buy now logic", async function () {
       gotchiDiamondAddress
     )) as ERC721Generic;
 
+    ghstHolder = await ethers.getSigner(ghstHolderAddress);
+    const ghstHolderBalance = await ghstERC20.balanceOf(ghstHolderAddress);
+
+    console.log("GHST Holder Balance: ", ghstHolderBalance.toString());
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [ghstHolderAddress],
+    });
+    await ghstERC20
+      .connect(ghstHolder)
+      .transfer(gotchiHolderAddress, ethers.utils.parseEther("100"));
+    await ghstERC20
+      .connect(ghstHolder)
+      .transfer(bidderAddress, ethers.utils.parseEther("100"));
+
+    console.log("HERE WORKED");
+
     await network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [bidderAddress],
     });
     bidder = await ethers.getSigner(bidderAddress);
+
     await network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [gotchiHolderAddress],
@@ -188,6 +211,7 @@ describe("Testing start bid price and buy now logic", async function () {
       const auctionOwnerGhstBalanceBefore = await ghstERC20.balanceOf(
         gotchiHolderAddress
       );
+
       const receipt = await (await gbmFacetWithBidder.claim(auctionId)).wait();
       const event = receipt!.events!.find(
         (e: any) => e.event === "Auction_ItemClaimed"
@@ -368,6 +392,7 @@ describe("Testing start bid price and buy now logic", async function () {
       const auctionOwnerGhstBalanceBefore = await ghstERC20.balanceOf(
         gotchiHolderAddress
       );
+
       const receipt = await (await gbmFacetWithBidder.buyNow(auctionId)).wait();
       const event = receipt!.events!.find(
         (e: any) => e.event === "Auction_BoughtNow"
@@ -380,6 +405,7 @@ describe("Testing start bid price and buy now logic", async function () {
       const auctionOwnerGhstBalanceAfter = await ghstERC20.balanceOf(
         gotchiHolderAddress
       );
+
       expect(
         auctionOwnerGhstBalanceAfter.sub(auctionOwnerGhstBalanceBefore)
       ).to.equal(buyItNowPriceLow.mul(96).div(100));
@@ -474,6 +500,71 @@ describe("Testing start bid price and buy now logic", async function () {
       await expect(gbmFacetWithBidder.buyNow(auctionId)).to.be.revertedWith(
         "HighestBidTooHighToBuyNow"
       );
+    });
+  });
+
+  describe("Testing buy now logic with specified recipient (buyNowFor)", async function () {
+    before(async function () {
+      // Reset the environment
+      await ethers.provider.send("evm_revert", [snapshot]);
+      snapshot = await ethers.provider.send("evm_snapshot", []);
+
+      // Define auction info with a buy it now price
+      auctionInfo = {
+        ...auctionInfoData,
+        startTime: Math.floor(Date.now() / 1000) + 200,
+        endTime: Math.floor(Date.now() / 1000) + 8640,
+        startingBid: startBidPrice,
+        buyItNowPrice: buyItNowPrice,
+      };
+
+      // Create the auction
+      const receipt = await (
+        await gbmFacetWithGotchiHolder.createAuction(
+          auctionInfo,
+          gotchiDiamondAddress,
+          auctionPresetId
+        )
+      ).wait();
+
+      // Extract auction ID from the creation event
+      const createEvent = receipt.events.find(
+        (e) => e.event === "Auction_Initialized"
+      );
+      auctionId = createEvent.args._auctionID;
+
+      // wait for auction started
+      await ethers.provider.send("evm_increaseTime", [500]);
+      await ethers.provider.send("evm_mine", []);
+    });
+    it("Should revert if the recipient address is invalid", async function () {
+      await expect(
+        gbmFacetWithBidder.buyNowFor(auctionId, ethers.constants.AddressZero)
+      ).to.be.revertedWith("Invalid recipient address");
+    });
+    it("Should allow buying an NFT for a specified recipient", async function () {
+      const recipient = "0xAd0CEb6Dc055477b8a737B630D6210EFa76a2265";
+
+      const auctionOwnerGhstBalanceBefore = await ghstERC20.balanceOf(
+        gotchiHolderAddress
+      );
+
+      // Ensure the recipient can receive the NFT
+      await expect(gbmFacetWithBidder.buyNowFor(auctionId, recipient))
+        .to.emit(gbmFacetWithBidder, "Auction_BoughtNow")
+        .withArgs(auctionId, recipient);
+
+      // Check that the recipient now owns the NFT
+      const newOwner = await gotchiDiamond.ownerOf(gotchiId);
+      expect(newOwner).to.equal(recipient);
+
+      // Check if funds were correctly transferred
+      const auctionOwnerGhstBalanceAfter = await ghstERC20.balanceOf(
+        gotchiHolderAddress
+      );
+      expect(
+        auctionOwnerGhstBalanceAfter.sub(auctionOwnerGhstBalanceBefore)
+      ).to.equal(buyItNowPrice.mul(96).div(100).add(startBidPrice.mul(4).div(100))); // assuming the buy now price is taken at 96%
     });
   });
 });
