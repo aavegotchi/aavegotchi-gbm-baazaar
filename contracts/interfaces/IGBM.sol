@@ -45,6 +45,8 @@ interface IGBM {
     event Auction_StartingPriceUpdated(uint256 indexed _auctionId, uint256 _startPrice);
     event Auction_BoughtNow(uint256 indexed _auctionId, address indexed _buyer);
 
+    event BuyItNowInvalidationThresholdSet(uint256 indexed _invalidationThreshold);
+
     //        uint256 _auctionID,
 } //        uint256 _bidAmount,
 //        uint256 _highestBid
