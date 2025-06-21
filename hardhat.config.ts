@@ -4,7 +4,7 @@ import "@nomiclabs/hardhat-ethers";
 import "hardhat-contract-sizer";
 import * as dotenv from "dotenv";
 
-import "@nomiclabs/hardhat-etherscan";
+import "@nomicfoundation/hardhat-verify";
 import "@typechain/hardhat";
 // require("./tasks/createBatchERC1155Auctions");
 
@@ -21,7 +21,13 @@ require("./tasks/generateDiamondABI.js");
 // Go to https://buidler.dev/config/ to learn more
 module.exports = {
   etherscan: {
-    apiKey: process.env.POLYGON_API_KEY,
+    apiKey: {
+      // matic: process.env.POLYGON_API_KEY,
+      // polter: "empty",
+      // geist: "empty",
+      baseSepolia: process.env.BASE_API_KEY,
+      base: process.env.BASE_API_KEY,
+    },
   },
   networks: {
     hardhat: {
@@ -48,6 +54,13 @@ module.exports = {
       gasPrice: 10000000000,
       //   timeout: 90000
     },
+
+    baseSepolia: {
+      url: process.env.BASE_SEPOLIA_RPC_URL,
+      accounts: [process.env.SECRET],
+      chainId: 84532,
+    },
+
     // kovan: {
     //   url: process.env.KOVAN_URL,
     //   // url: 'https://rpc-mainnet.maticvigil.com/',
