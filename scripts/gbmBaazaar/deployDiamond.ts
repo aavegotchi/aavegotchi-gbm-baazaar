@@ -74,7 +74,6 @@ export async function deployFullDiamond() {
     vars.realmDiamond,
     vars.tileDiamond,
     vars.installationDiamond,
-    vars.aavegotchiDiamond,
     vars.fakeGotchiCardDiamond,
     vars.fakeGotchiArtDiamond,
     vars.ggSkinsDiamond,

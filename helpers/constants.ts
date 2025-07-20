@@ -106,10 +106,10 @@ export const maticVars: Constants = {
 };
 
 export const baseSepoliaVars: Constants = {
-  aavegotchiDiamond: "0xf28469b81871D924ae70664FEBf5AF626AAe5087",
+  aavegotchiDiamond: "0x03A74B3e2DD81F5E8FFA1Fb96bb81B35cF3ed5d2",
   realmDiamond: "0x37D140074B2f771bEa7ef23288EB87064e45bF8D",
   installationDiamond: "0x5Aefdc5283B24EEa7b50FFBBf7FB8A2bD4537609",
-  forgeDiamond: "0xec3DD222148b686995b86515C99A772375D691B7",
+  forgeDiamond: "0x40742c1D9dd604889aD45D2f85bE9C9A7609C4cB",
   tileDiamond: "0x96B19Fa954d961fAD4b665e3259C72466ca4C1dA",
   ghst: "0xe97f36a00058aa7dfc4e85d23532c3f70453a7ae",
   pixelcraft: "0x10759c35F8dE7E6172BB30e0B10312c1a295aC2F",
