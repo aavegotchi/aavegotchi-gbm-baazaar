@@ -9,7 +9,7 @@ import {
   DefenderRelaySigner,
 } from "defender-relay-client/lib/ethers";
 
-export const gasPrice = 300000000000;
+export const gasPrice = 150000000000;
 
 export interface InitiatorInfo {
   startTime: BigNumber;
