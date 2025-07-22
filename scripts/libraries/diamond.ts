@@ -2,8 +2,9 @@
 
 import { ethers } from "hardhat";
 
-import { FunctionFragment, ErrorFragment } from "@ethersproject/abi";
+// import { FunctionFragment, ErrorFragment } from "@ethersproject/abi";
 import { Contract } from "ethers";
+import { ErrorFragment, FunctionFragment } from "ethers/lib/utils";
 
 //func:string;
 //let contract:Contract
