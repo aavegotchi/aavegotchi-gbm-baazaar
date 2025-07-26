@@ -160,7 +160,8 @@ export async function warp(timeInSeconds: number) {
 export const xpRelayerAddress = "0xb6384935d68e9858f8385ebeed7db84fc93b1420";
 export const xpRelayerAddressBaseSepolia =
   "0x9343363e8e6518ba7166ce702a7589e7bbd1fd81";
-export const xpRelayerAddressBase = "";
+export const xpRelayerAddressBase =
+  "0xf52398257A254D541F392667600901f710a006eD";
 
 export interface RelayerInfo {
   apiKey: string;

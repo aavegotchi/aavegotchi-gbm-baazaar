@@ -135,12 +135,30 @@ export const localVars: Constants = {
   rarityFarming: "0x10759c35F8dE7E6172BB30e0B10312c1a295aC2F",
 };
 
+const baseVars: Constants = {
+  aavegotchiDiamond: "0xA99c4B08201F2913Db8D28e71d020c4298F29dBF",
+  realmDiamond: "",
+  installationDiamond: "",
+  tileDiamond: "",
+  forgeDiamond: "0x50aF2d63b839aA32b4166FD1Cb247129b715186C",
+  ghst: "0xcd2f22236dd9dfe2356d7c543161d4d260fd9bcb",
+  pixelcraft: "0x50Def14C51123660f8768b511B93cC8c09f30356",
+  DAO: "0x939b67F6F6BE63E09B0258621c5A24eecB92631c",
+  GBM: "0xA7427d0D45e8dd969049872F9cDE383716A39B23",
+  rarityFarming: "0x8c8E076Cd7D2A17Ba2a5e5AF7036c2b2B7F790f6",
+   gbmDiamond: "0x80320A0000C7A6a34086E2ACAD6915Ff57FfDA31",
+  fakeGotchiCardDiamond: "0xe46B8902dAD841476d9Fee081F1d62aE317206A9",
+  fakeGotchiArtDiamond: "0xAb59CA4A16925b0a4BaC5026C94bEB20A29Df479",
+  ggSkinsDiamond: "",
+  ggProfilesDiamond: "",
+};
+
 //add base mainnet vars here
 
 const networkToVars: NetworkToConstants = {
   137: maticVars,
   // 63157: geistVars, //update to basevars
-  // 8453: baseVars,
+  8453: baseVars,
   84532: baseSepoliaVars,
   31337: localVars,
 };

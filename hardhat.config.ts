@@ -54,12 +54,16 @@ module.exports = {
       gasPrice: 10000000000,
       //   timeout: 90000
     },
-
-    baseSepolia: {
-      url: process.env.BASE_SEPOLIA_RPC_URL,
+    base: {
+      url: process.env.BASE_RPC_URL,
       accounts: [process.env.SECRET],
-      chainId: 84532,
+      chainId: 8453,
     },
+    // baseSepolia: {
+    //   url: process.env.BASE_SEPOLIA_RPC_URL,
+    //   accounts: [process.env.SECRET],
+    //   chainId: 84532,
+    // },
 
     // kovan: {
     //   url: process.env.KOVAN_URL,

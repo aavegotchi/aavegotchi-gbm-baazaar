@@ -71,13 +71,13 @@ export async function deployFullDiamond() {
   const tokens = [
     vars.aavegotchiDiamond,
     vars.forgeDiamond,
-    vars.realmDiamond,
-    vars.tileDiamond,
-    vars.installationDiamond,
+    //  vars.realmDiamond,
+    // vars.tileDiamond,
+    // vars.installationDiamond,
     vars.fakeGotchiCardDiamond,
     vars.fakeGotchiArtDiamond,
-    vars.ggSkinsDiamond,
-    vars.ggProfilesDiamond,
+    // vars.ggSkinsDiamond,
+    // vars.ggProfilesDiamond,
   ];
 
   // deploy DiamondCutFacet
@@ -164,7 +164,7 @@ export async function deployFullDiamond() {
   );
 
   tx = await diamondCut.diamondCut(cut, diamondInit.address, functionCall, {
-    gasPrice: gasPrice,
+    // gasPrice: gasPrice,
   });
   console.log("Diamond cut tx: ", tx.hash);
   receipt = await tx.wait();
@@ -198,6 +198,10 @@ export async function deployFullDiamond() {
     await gbm.setBiddingAllowed(tokens[i], true);
     console.log(`enabled bidding for token with address ${tokens[i]} `);
   }
+
+  //pause diamond
+  await gbm.toggleDiamondPause(true);
+  console.log("paused diamond");
 
   const gbmBaazaarDeployment: GbmBaazaarDeployment = {
     gbmDiamond: diamond.address,

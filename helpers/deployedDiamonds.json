@@ -1,0 +1,34 @@
+{
+  "8453": {
+    "gbmDiamond": "0x80320A0000C7A6a34086E2ACAD6915Ff57FfDA31",
+    "presets": [
+      {
+        "incMin": 500,
+        "incMax": 1000,
+        "bidMultiplier": 500,
+        "stepMin": 1000,
+        "bidDecimals": 100000
+      },
+      {
+        "incMin": 500,
+        "incMax": 5000,
+        "bidMultiplier": 4970,
+        "stepMin": 5000,
+        "bidDecimals": 100000
+      },
+      {
+        "incMin": 1000,
+        "incMax": 10000,
+        "bidMultiplier": 11000,
+        "stepMin": 10000,
+        "bidDecimals": 100000
+      }
+    ],
+    "whitelistedTokens": [
+      "0xA99c4B08201F2913Db8D28e71d020c4298F29dBF",
+      "0x50aF2d63b839aA32b4166FD1Cb247129b715186C",
+      "0xe46B8902dAD841476d9Fee081F1d62aE317206A9",
+      "0xAb59CA4A16925b0a4BaC5026C94bEB20A29Df479"
+    ]
+  }
+}
