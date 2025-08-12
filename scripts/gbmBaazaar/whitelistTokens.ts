@@ -24,10 +24,15 @@ export async function whitelistTokens() {
   } else throw Error("Incorrect network selected");
 
   //whitelist tokens
-  const tokens = [c.realmDiamond, c.installationDiamond, c.tileDiamond];
-  const bool = [true, true, true];
+  const tokens = [
+    c.realmDiamond,
+    c.installationDiamond,
+    c.tileDiamond,
+    c.ggSkinsDiamond,
+  ];
+  const bool = [true, true, true, true];
 
-  for (let i = 0; i < tokens.length; i++) {
+  for (let i = 0; i < 3; i++) {
     let tx = await gbmDiamond.toggleContractWhitelist(tokens[i], bool[i]);
     await tx.wait();
     console.log(`whitelisted token ${tokens[i]} at txn ${tx.hash}`);
