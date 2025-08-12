@@ -378,23 +378,26 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         uint256 _tokenID = a.info.tokenID;
         uint256 _amount = a.info.tokenAmount;
 
-        //royalties
-        address[] memory royalties;
-        uint256[] memory royaltyShares;
+        if (_amount > 0) {
+            //royalties
+            address[] memory royalties;
+            uint256[] memory royaltyShares;
 
-        if (IERC165(_contract).supportsInterface(0x2a55205a)) {
-            // EIP-2981 is supported
-            royalties = new address[](1);
-            royaltyShares = new uint256[](1);
-            (royalties[0], royaltyShares[0]) = IERC2981(_contract).royaltyInfo(_tokenID, _salePrice);
-        } else if (IERC165(_contract).supportsInterface(0x24d34933)) {
-            // Multi Royalty Standard supported
-            (royalties, royaltyShares) = IMultiRoyalty(_contract).multiRoyaltyInfo(_tokenID, _salePrice);
+            if (IERC165(_contract).supportsInterface(0x2a55205a)) {
+                // EIP-2981 is supported
+                royalties = new address[](1);
+                royaltyShares = new uint256[](1);
+                (royalties[0], royaltyShares[0]) = IERC2981(_contract).royaltyInfo(_tokenID, _salePrice);
+            } else if (IERC165(_contract).supportsInterface(0x24d34933)) {
+                // Multi Royalty Standard supported
+                (royalties, royaltyShares) = IMultiRoyalty(_contract).multiRoyaltyInfo(_tokenID, _salePrice);
+            }
+
+            uint256 toOwner = _settleFeesWithRoyalty(_auctionID, _salePrice, royalties, royaltyShares) - a.auctionDebt - _dueIncentives;
+
+            //remaining goes to auction owner
+            IERC20(s.GHST).transfer(a.owner, toOwner);
         }
-        uint256 toOwner = _settleFeesWithRoyalty(_auctionID, _salePrice, royalties, royaltyShares) - a.auctionDebt - _dueIncentives;
-
-        //remaining goes to auction owner
-        IERC20(s.GHST).transfer(a.owner, toOwner);
 
         if (_tokenKind == ERC721) {
             _sendTokens(_contract, _recipient, ERC721, _tokenID, 1);
