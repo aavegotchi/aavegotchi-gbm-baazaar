@@ -1,10 +1,11 @@
 import { ethers, network } from "hardhat";
-import { impersonate, maticDiamondAddress } from "../helperFunctions";
+import { gasPrice, impersonate, maticDiamondAddress } from "../helperFunctions";
 import { LedgerSigner } from "@anders-t/ethers-ledger";
 import * as fs from "fs";
 import * as path from "path";
 import { maticGBMDiamond } from "../constants";
 import { GBMFacet } from "../../typechain";
+import { mine } from "@nomicfoundation/hardhat-network-helpers";
 
 const BATCH_SIZE = 50; // Number of auctions to process in each batch
 const PROGRESS_DIR = path.join(__dirname, "progress");
@@ -23,6 +24,8 @@ export async function finalizeAuctions() {
   const testing = ["hardhat", "localhost"].includes(network.name);
 
   if (testing) {
+    await mine();
+
     const gbmDiamondOwner = await getOwner(maticGBMDiamond);
     gbmDiamond = await ethers.getContractAt("GBMFacet", maticGBMDiamond);
     gbmDiamond = await impersonate(
@@ -58,7 +61,20 @@ export async function finalizeAuctions() {
   }
 
   console.log("Fetching unclaimed auctions...");
-  const unclaimedAuctions = await gbmDiamond.getAllUnclaimedAuctions();
+
+  const omitList = [19516, 19518, 21264];
+
+  const unclaimedAuctions = await gbmDiamond
+    .getAllUnclaimedAuctions()
+    .then((auctions) =>
+      auctions.filter((auction) => !omitList.includes(auction.toNumber()))
+    );
+
+  for (let index = 0; index < unclaimedAuctions.length; index++) {
+    const element = unclaimedAuctions[index];
+    console.log(element.toString() + ",");
+  }
+
   console.log(`Total unclaimed auctions: ${unclaimedAuctions.length}`);
 
   // Process auctions in batches
@@ -75,7 +91,7 @@ export async function finalizeAuctions() {
     );
 
     try {
-      const tx = await gbmDiamond.claimAll(batch);
+      const tx = await gbmDiamond.claimAll(batch, { gasPrice: gasPrice });
       await tx.wait();
       console.log(
         `Successfully claimed batch ${i / BATCH_SIZE + 1} at txn ${tx.hash}`
