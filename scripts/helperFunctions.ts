@@ -8,6 +8,7 @@ import {
   DefenderRelayProvider,
   DefenderRelaySigner,
 } from "defender-relay-client/lib/ethers";
+import { LedgerSigner } from "@anders-t/ethers-ledger";
 
 export const gasPrice = 300000000000;
 
@@ -288,4 +289,9 @@ export async function verifyContract(
       );
     }
   }
+}
+
+export async function getLedgerSigner(ethers: any) {
+  console.log("Getting ledger signer");
+  return new LedgerSigner(ethers.provider, "m/44'/60'/1'/0/0");
 }

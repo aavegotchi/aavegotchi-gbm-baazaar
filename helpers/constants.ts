@@ -137,19 +137,19 @@ export const localVars: Constants = {
 
 const baseVars: Constants = {
   aavegotchiDiamond: "0xA99c4B08201F2913Db8D28e71d020c4298F29dBF",
-  realmDiamond: "",
-  installationDiamond: "",
-  tileDiamond: "",
+  realmDiamond: "0x4B0040c3646D3c44B8a28Ad7055cfCF536c05372",
+  installationDiamond: "0xebba5b725A2889f7f089a6cAE0246A32cad4E26b",
+  tileDiamond: "0x617fdB8093b309e4699107F48812b407A7c37938",
   forgeDiamond: "0x50aF2d63b839aA32b4166FD1Cb247129b715186C",
   ghst: "0xcd2f22236dd9dfe2356d7c543161d4d260fd9bcb",
   pixelcraft: "0x50Def14C51123660f8768b511B93cC8c09f30356",
   DAO: "0x939b67F6F6BE63E09B0258621c5A24eecB92631c",
   GBM: "0xA7427d0D45e8dd969049872F9cDE383716A39B23",
   rarityFarming: "0x8c8E076Cd7D2A17Ba2a5e5AF7036c2b2B7F790f6",
-   gbmDiamond: "0x80320A0000C7A6a34086E2ACAD6915Ff57FfDA31",
+  gbmDiamond: "0x80320A0000C7A6a34086E2ACAD6915Ff57FfDA31",
   fakeGotchiCardDiamond: "0xe46B8902dAD841476d9Fee081F1d62aE317206A9",
   fakeGotchiArtDiamond: "0xAb59CA4A16925b0a4BaC5026C94bEB20A29Df479",
-  ggSkinsDiamond: "",
+  ggSkinsDiamond: "0x898d0F54d8CF60698972a75be7Ea1B45aAb66e59",
   ggProfilesDiamond: "",
 };
 
