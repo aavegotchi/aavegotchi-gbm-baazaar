@@ -171,11 +171,8 @@ export interface RelayerInfo {
 export async function getRelayerSigner(hre: HardhatRuntimeEnvironment) {
   const testing = ["hardhat", "localhost"].includes(hre.network.name);
   let xpRelayer;
-  if (
-    hre.network.config.chainId === 137 ||
-    hre.network.config.chainId === 8453
-  ) {
-    xpRelayer = xpRelayerAddress;
+  if (hre.network.config.chainId === 8453) {
+    xpRelayer = xpRelayerAddressBase;
   } else if (hre.network.config.chainId === 84532) {
     xpRelayer = xpRelayerAddressBaseSepolia;
   }
