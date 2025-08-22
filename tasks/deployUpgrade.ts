@@ -7,16 +7,13 @@ import {
   ContractTransaction,
   PopulatedTransaction,
 } from "@ethersproject/contracts";
-import { Signer } from "@ethersproject/abstract-signer";
 
-import { OwnershipFacet } from "../typechain/OwnershipFacet";
 import { IDiamondCut } from "../typechain/IDiamondCut";
 import {
-  gasPrice,
+  getRelayerSigner,
   getSelectors,
   getSighashes,
 } from "../scripts/helperFunctions";
-import { LedgerSigner } from "@anders-t/ethers-ledger";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -112,7 +109,7 @@ task(
       const diamondUpgrader: string = taskArgs.diamondUpgrader;
       const diamondAddress: string = taskArgs.diamondAddress;
       const useMultisig = taskArgs.useMultisig;
-      const useLedger = taskArgs.useLedger;
+
       const initAddress = taskArgs.initAddress;
       const initCalldata = taskArgs.initCalldata;
 
@@ -122,36 +119,31 @@ task(
         await mine();
       }
 
-      //Instantiate the Signer
-      let signer: Signer;
-      const owner = await (
-        (await hre.ethers.getContractAt(
-          "OwnershipFacet",
-          diamondAddress
-        )) as OwnershipFacet
-      ).owner();
+      const signer = await getRelayerSigner(hre);
 
-      if (testing) {
-        await hre.network.provider.request({
-          method: "hardhat_impersonateAccount",
-          params: [owner],
-        });
-        signer = await hre.ethers.getSigner(owner);
-      } else if (hre.network.name === "matic" || "mumbai") {
-        if (useLedger) {
-          console.log("use ledger");
-          signer = new LedgerSigner(hre.ethers.provider, "m/44'/60'/1'/0/0");
-        } else signer = (await hre.ethers.getSigners())[0];
-      } else {
-        throw Error("Incorrect network selected");
-      }
+      // //Instantiate the Signer
+      // let signer: Signer;
+      // const owner = await (
+      //   (await hre.ethers.getContractAt(
+      //     "OwnershipFacet",
+      //     diamondAddress
+      //   )) as OwnershipFacet
+      // ).owner();
 
-      console.log(
-        `Deploying address: ${await signer.getAddress()} with gas: ${hre.ethers.utils.formatUnits(
-          gasPrice,
-          "gwei"
-        )}`
-      );
+      // if (testing) {
+      //   await hre.network.provider.request({
+      //     method: "hardhat_impersonateAccount",
+      //     params: [owner],
+      //   });
+      //   signer = await hre.ethers.getSigner(owner);
+      // } else if (hre.network.name === "matic" || "mumbai") {
+      //   if (useLedger) {
+      //     console.log("use ledger");
+      //     signer = new LedgerSigner(hre.ethers.provider, "m/44'/60'/1'/0/0");
+      //   } else signer = (await hre.ethers.getSigners())[0];
+      // } else {
+      //   throw Error("Incorrect network selected");
+      // }
 
       //Create the cut
       const deployedFacets = [];
@@ -162,11 +154,10 @@ task(
 
         console.log("Deploying facet:", facet);
         const factory = (await hre.ethers.getContractFactory(
-          facet.facetName
+          facet.facetName,
+          signer
         )) as ContractFactory;
-        const deployedFacet: Contract = await factory.deploy({
-          gasPrice: gasPrice,
-        });
+        const deployedFacet: Contract = await factory.deploy();
 
         await deployedFacet.deployed();
         console.log(
@@ -219,8 +210,6 @@ task(
         }
       }
 
-      console.log(cut);
-
       //Execute the Cut
       const diamondCut = (await hre.ethers.getContractAt(
         "IDiamondCut",
@@ -233,8 +222,7 @@ task(
         const tx: ContractTransaction = await diamondCut.diamondCut(
           cut,
           initAddress,
-          initCalldata,
-          { gasLimit: 8000000 }
+          initCalldata
         );
         console.log("Diamond cut tx:", tx.hash);
         const receipt: ContractReceipt = await tx.wait();
@@ -259,8 +247,7 @@ task(
           const tx: ContractTransaction = await diamondCut.diamondCut(
             cut,
             initAddress,
-            initCalldata,
-            { gasPrice: gasPrice }
+            initCalldata
           );
 
           const receipt: ContractReceipt = await tx.wait();
