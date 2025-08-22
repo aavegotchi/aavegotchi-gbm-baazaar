@@ -144,38 +144,6 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         _calculateRoyaltyAndSend(_auctionID, recipient, a.highestBid, 0);
     }
 
-    //to be called after diamond is paused
-    function claimAll(uint256[] calldata _auctionIds) external onlyOwner {
-        for (uint256 i = 0; i < _auctionIds.length; i++) {
-            Auction storage a = s.auctions[_auctionIds[i]];
-            if (a.owner == address(0)) revert("NoAuction");
-            if (a.claimed == true) revert("AuctionClaimed");
-
-            //Prevents re-entrancy
-            a.claimed = true;
-
-            address recipient = a.highestBidder == address(0) ? a.owner : a.highestBidder;
-
-            _calculateRoyaltyAndSend(_auctionIds[i], recipient, a.highestBid, 0);
-        }
-    }
-
-    function getAllUnclaimedAuctions() public view returns (uint256[] memory) {
-        uint256[] memory unclaimedAuctions = new uint256[](s.auctionNonce);
-        uint256 unclaimedCount = 0;
-        for (uint256 i = 0; i < s.auctionNonce; i++) {
-            if (s.auctions[i].claimed == false) {
-                unclaimedAuctions[unclaimedCount] = i;
-                unclaimedCount++;
-            }
-        }
-
-        assembly {
-            mstore(unclaimedAuctions, unclaimedCount)
-        }
-        return unclaimedAuctions;
-    }
-
     /// @notice Attribute a token to the caller and distribute the proceeds to the owner of this contract.
     /// throw if bidding is disabled or if the auction is not finished.
     /// @param _auctionID The auctionId of the auction to complete
@@ -640,6 +608,10 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
 
     function isBiddingAllowed(address _contract) public view returns (bool) {
         return s.contractBiddingAllowed[_contract];
+    }
+
+    function isWhitelisted(address _contract) public view returns (bool) {
+        return s.contractAllowed[_contract];
     }
 
     function onERC721Received(

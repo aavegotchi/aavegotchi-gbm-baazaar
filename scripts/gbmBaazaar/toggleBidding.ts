@@ -64,19 +64,9 @@ export async function toggleContractWhitelist() {
   // Define the tokens you want to whitelist/unwhitelist
   const tokensToToggle: WhitelistConfig[] = [
     {
-      tokenAddress: "0xebba5b725A2889f7f089a6cAE0246A32cad4E26b",
+      tokenAddress: "0xF6c1b83977DE3dEffC476f5048A0a84d3375d498",
       enabled: true,
-      description: "Installations",
-    },
-    {
-      tokenAddress: "0x4B0040c3646D3c44B8a28Ad7055cfCF536c05372",
-      enabled: true,
-      description: "REALM Parcels",
-    },
-    {
-      tokenAddress: "0x617fdB8093b309e4699107F48812b407A7c37938",
-      enabled: true,
-      description: "Tiles",
+      description: "Unstoppable Domains",
     },
 
     // Add more tokens as needed

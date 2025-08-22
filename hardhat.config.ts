@@ -32,11 +32,9 @@ module.exports = {
   networks: {
     hardhat: {
       forking: {
-        url: process.env.MATIC_URL,
+        url: process.env.BASE_RPC_URL,
         accounts: [process.env.SECRET],
-        // timeout: 1200000,
-        // blockNumber: 26200790,
-        // blockNumber: 13024371
+        blockNumber: 34524730,
       },
       blockGasLimit: 200000000,
       timeout: 120000,

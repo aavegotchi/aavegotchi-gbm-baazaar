@@ -158,11 +158,8 @@ export async function warp(timeInSeconds: number) {
   return newTime;
 }
 
-export const xpRelayerAddress = "0xb6384935d68e9858f8385ebeed7db84fc93b1420";
-export const xpRelayerAddressBaseSepolia =
-  "0x9343363e8e6518ba7166ce702a7589e7bbd1fd81";
-export const xpRelayerAddressBase =
-  "0xf52398257A254D541F392667600901f710a006eD";
+export const relayerBaseSepolia = "0x9343363e8e6518ba7166ce702a7589e7bbd1fd81";
+export const baseRelayerAddress = "0xf52398257A254D541F392667600901f710a006eD";
 
 export interface RelayerInfo {
   apiKey: string;
@@ -173,27 +170,27 @@ export async function getRelayerSigner(hre: HardhatRuntimeEnvironment) {
   const testing = ["hardhat", "localhost"].includes(hre.network.name);
   let xpRelayer;
   if (hre.network.config.chainId === 8453) {
-    xpRelayer = xpRelayerAddressBase;
+    xpRelayer = baseRelayerAddress;
   } else if (hre.network.config.chainId === 84532) {
-    xpRelayer = xpRelayerAddressBaseSepolia;
+    xpRelayer = relayerBaseSepolia;
+  } else {
+    xpRelayer = baseRelayerAddress;
   }
 
   if (testing) {
-    if (hre.network.config.chainId !== 31337) {
-      console.log("Using Hardhat");
+    console.log("Using Hardhat");
 
-      await hre.network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [xpRelayer],
-      });
-      await hre.network.provider.request({
-        method: "hardhat_setBalance",
-        params: [xpRelayerAddress, "0x100000000000000000000000"],
-      });
-      return await hre.ethers.provider.getSigner(xpRelayerAddress);
-    } else {
-      return (await hre.ethers.getSigners())[0];
-    }
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [xpRelayer],
+    });
+    await hre.network.provider.request({
+      method: "hardhat_setBalance",
+      params: [xpRelayer, "0x100000000000000000000000"],
+    });
+
+    return await hre.ethers.provider.getSigner(xpRelayer);
+
     //we assume same defender for base mainnet
   } else if (hre.network.name === "matic" || hre.network.name === "base") {
     console.log("USING MAINNET RELAYER");
