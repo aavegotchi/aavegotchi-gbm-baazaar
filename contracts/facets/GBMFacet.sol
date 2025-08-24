@@ -23,6 +23,11 @@ import "../interfaces/IMultiRoyalty.sol";
 /// @dev See GBM.auction on how to use this contract
 /// @author Guillaume Gonnaud
 contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifiers {
+    event PubkeySet(bytes _backendPubKey);
+    event AddressUpdated(address _pixelcraft, address _dao, address _gbm, address _rarityFarming);
+    event ContractWhitelisted(address indexed _tokenContract, bool indexed _allowed);
+    event AuctionPresetSet(uint256 indexed _presetId, Preset _preset);
+
     /// @notice Place a GBM bid for a GBM auction
     /// @param _auctionID The auction you want to bid on
     /// @param _bidAmount The amount of the ERC20 token the bid is made of. They should be withdrawable by this contract.
@@ -225,11 +230,11 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     function toggleContractWhitelist(address _tokenContract, bool _allowed) external onlyOwner {
         if (_allowed) {
             if (s.contractAllowed[_tokenContract]) revert("ContractEnabledAlready");
-            s.contractAllowed[_tokenContract] = _allowed;
         } else {
             if (!s.contractAllowed[_tokenContract]) revert("ContractDisabledAlready");
-            s.contractAllowed[_tokenContract] = _allowed;
         }
+        s.contractAllowed[_tokenContract] = _allowed;
+        emit ContractWhitelisted(_tokenContract, _allowed);
     }
 
     /// @notice Allows the creation of new Auctions
@@ -531,6 +536,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     function setBuyItNowInvalidationThreshold(uint256 _invalidationThreshold) external onlyOwner {
         if (_invalidationThreshold >= 100) revert("Invalid Threshold");
         s.buyItNowInvalidationThreshold = _invalidationThreshold;
+        emit BuyItNowInvalidationThresholdSet(_invalidationThreshold);
     }
 
     function _settleFees(uint256 _total) internal returns (uint256 rem_) {
@@ -553,10 +559,12 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
     /// Throw if the token owner is not the GBM smart contract
     function setAuctionPresets(uint256 _auctionPresetID, Preset calldata _preset) external onlyOwner {
         s.auctionPresets[_auctionPresetID] = _preset;
+        emit AuctionPresetSet(_auctionPresetID, _preset);
     }
 
     function setPubkey(bytes calldata _newPubkey) external onlyOwner {
         s.backendPubKey = _newPubkey;
+        emit PubkeySet(_newPubkey);
     }
 
     function setAddresses(address _pixelcraft, address _dao, address _gbm, address _rarityFarming) external onlyOwner {
@@ -564,6 +572,7 @@ contract GBMFacet is IGBM, IERC1155TokenReceiver, IERC721TokenReceiver, Modifier
         s.DAO = _dao;
         s.GBMAddress = _gbm;
         s.rarityFarming = _rarityFarming;
+        emit AddressUpdated(_pixelcraft, _dao, _gbm, _rarityFarming);
     }
 
     function getAuctionPresets(uint256 _auctionPresetID) public view returns (Preset memory presets_) {
