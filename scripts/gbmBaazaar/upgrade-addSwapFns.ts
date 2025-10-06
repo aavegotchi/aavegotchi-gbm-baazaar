@@ -83,10 +83,10 @@ export async function upgradeAddSwapFns() {
     GBMFacet__factory.abi
   ) as GBMFacetInterface;
 
-  //we are setting the buyItNowInvalidationThreshold to 10%
+  //we are setting the buyItNowInvalidationThreshold to 90%
   const calldata = iface.encodeFunctionData(
     "setBuyItNowInvalidationThreshold",
-    [10]
+    [90]
   );
   const args: DeployUpgradeTaskArgs = {
     diamondOwner: owner,
@@ -100,8 +100,6 @@ export async function upgradeAddSwapFns() {
   };
 
   await run("deployUpgrade", args);
-
-  //we need to  set the buyItNowThreshold to 10
 }
 
 // We recommend this pattern to be able to use async/await everywhere

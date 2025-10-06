@@ -73,18 +73,16 @@ contract GBMFacet is IGBM, Modifiers {
 
         require(ctx.minGhstOut >= ctx.bidAmount, "GBM: minGhstOut must cover total bid amount");
 
-        uint256 initialGhstAmount = IERC20(s.GHST).balanceOf(address(this));
-
         //execute swap
         uint256 ghstReceived = LibTokenSwap.swapForGHST(ctx.tokenIn, ctx.swapAmount, ctx.minGhstOut, ctx.swapDeadline, address(this));
 
         //make sure we received enough ghst
         require(ghstReceived >= ctx.bidAmount, "GBM: Insufficient ghst received");
 
-        (uint256 previousHighestBid, uint256 duePay) = _settleBid(ctx.auctionID, ctx.bidAmount, a);
+        (, uint256 duePay) = _settleBid(ctx.auctionID, ctx.bidAmount, a);
 
         //refund excess ghst
-        LibTokenSwap.refundExcessGHST(ctx.recipient, initialGhstAmount + duePay);
+        LibTokenSwap.refundExcessGHST(ctx.recipient, ghstReceived, ctx.bidAmount);
     }
 
     struct SwapBuyNowCtx {
@@ -113,7 +111,6 @@ contract GBMFacet is IGBM, Modifiers {
         if (s.contractBiddingAllowed[tokenContract] == false) revert("BiddingNotAllowed");
 
         // snapshot GHST and prior highest bid state for refunds
-        uint256 initialGhstAmount = IERC20(s.GHST).balanceOf(address(this));
         uint256 previousHighestBid = a.highestBid;
         uint256 duePay = a.dueIncentives;
         address previousHighestBidder = a.highestBidder;
@@ -137,7 +134,7 @@ contract GBMFacet is IGBM, Modifiers {
         _calculateRoyaltyAndSend(ctx.auctionID, msg.sender, ae1bnp, a.dueIncentives);
 
         // refund any excess GHST from the swap that wasn't needed
-        LibTokenSwap.refundExcessGHST(ctx.recipient, initialGhstAmount + duePay);
+        LibTokenSwap.refundExcessGHST(ctx.recipient, ghstReceived, ae1bnp);
     }
 
     /// @notice Place a GBM bid for a GBM auction
