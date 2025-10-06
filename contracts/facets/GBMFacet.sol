@@ -79,7 +79,7 @@ contract GBMFacet is IGBM, Modifiers {
         //make sure we received enough ghst
         require(ghstReceived >= ctx.bidAmount, "GBM: Insufficient ghst received");
 
-        (, uint256 duePay) = _settleBid(ctx.auctionID, ctx.bidAmount, a);
+        _settleBid(ctx.auctionID, ctx.bidAmount, a);
 
         //refund excess ghst
         LibTokenSwap.refundExcessGHST(ctx.recipient, ghstReceived, ctx.bidAmount);
