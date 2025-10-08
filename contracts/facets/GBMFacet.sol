@@ -62,7 +62,7 @@ contract GBMFacet is IGBM, Modifiers {
         bytes _signature;
     }
 
-    function swapAndCommitBid(SwapBidCtx memory ctx) external {
+    function swapAndCommitBid(SwapBidCtx memory ctx) external payable {
         bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, ctx.auctionID, ctx.bidAmount, ctx.highestBid));
         require(LibSignature.isValid(messageHash, ctx._signature, s.backendPubKey), "bid: Invalid signature");
         //validate swap params
@@ -94,7 +94,7 @@ contract GBMFacet is IGBM, Modifiers {
         uint256 auctionID;
     }
 
-    function swapAndBuyNow(SwapBuyNowCtx memory ctx) external {
+    function swapAndBuyNow(SwapBuyNowCtx memory ctx) external payable {
         // validate swap params
         LibTokenSwap.validateSwapParams(ctx.tokenIn, ctx.swapAmount, ctx.minGhstOut, ctx.swapDeadline);
         require(ctx.recipient != address(0), "GBM: recipient cannot be 0 address");
