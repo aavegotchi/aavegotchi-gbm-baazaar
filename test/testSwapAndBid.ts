@@ -18,13 +18,18 @@ function nowTs(): number {
   return Math.floor(Date.now() / 1000);
 }
 
+async function chainNowTs(): Promise<number> {
+  const block = await ethers.provider.getBlock("latest");
+  return block.timestamp;
+}
+
 async function fetchLatestAuctionId(hasBuyNow: boolean): Promise<number> {
   const endpoint =
     "https://subgraph.satsuma-prod.com/tWYl5n5y04oz/aavegotchi/aavegotchi-gbm-baazaar-base/api";
   const where = hasBuyNow
     ? "cancelled: false, claimed: false, buyNowPrice_gt: 0"
     : "cancelled: false, claimed: false, buyNowPrice_gte: 0";
-  const query = `query LatestAuction { auctions(where: { ${where} } first: 1 orderBy: id orderDirection: desc) { id buyNowPrice } }`;
+  const query = `query LatestAuction { auctions(where: { ${where} } first: 1 orderBy: endsAt orderDirection: desc) { id buyNowPrice } }`;
   const res = await fetch(endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -50,7 +55,7 @@ async function fetchLatestBuyNowAuction(): Promise<{
   const currentTime = Math.floor(Date.now() / 1000);
 
   // Query for buyNow auctions (we'll check endTime on-chain)
-  const query = `query LatestBuyNow { auctions(where: { cancelled: false, claimed: false, buyNowPrice_gt: 0 } first: 1 orderBy: id orderDirection: desc) { id buyNowPrice highestBid } }`;
+  const query = `query LatestBuyNow { auctions(where: { cancelled: false, claimed: false, buyNowPrice_gt: 0 } first: 1 orderBy: endsAt orderDirection: desc) { id buyNowPrice highestBid } }`;
   const res = await fetch(endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -95,6 +100,7 @@ describe("GBM: swapAndCommitBid on Base fork", function () {
   let bidder: any;
 
   before(async function () {
+    this.timeout(1000000);
     await mine();
     await upgradeAddSwapFns();
     // Get signers
@@ -228,12 +234,14 @@ describe("GBM: swapAndCommitBid on Base fork", function () {
         ethers.utils.arrayify(messageHash)
       );
 
+      const swapDeadline = (await chainNowTs()) + 3600;
+
       // Build ctx struct
       const ctx = {
         tokenIn: ADDRESSES.USDC,
         swapAmount: finalSwapAmount,
         minGhstOut: bidAmount,
-        swapDeadline: nowTs() + 3600,
+        swapDeadline,
         recipient: await bidder.getAddress(),
         auctionID: AUCTION_ID,
         bidAmount,
@@ -441,13 +449,6 @@ describe("GBM: swapAndCommitBid on Base fork", function () {
       const endTime = Number(info.info.endTime || info.endTime || 0);
       const currentTime = Math.floor(Date.now() / 1000);
 
-      if (endTime > 0 && endTime <= currentTime) {
-        console.log(
-          `Skipping test: Auction ${AUCTION_ID} ended at ${endTime}, current time ${currentTime}`
-        );
-        return;
-      }
-
       // Compute USDC needed from 0.46 USDC/GHST, with 20% buffer
       const usdcNeeded = buyNowPrice
         .mul(46)
@@ -522,14 +523,15 @@ describe("GBM: swapAndCommitBid on Base fork", function () {
         "GHST"
       );
       console.log("  Recipient:", await bidder.getAddress());
-      console.log("  deadline:", nowTs() + 3600);
+      const swapDeadline = (await chainNowTs()) + 3600;
+      console.log("  deadline:", swapDeadline);
 
       const ctx = {
         tokenIn: ADDRESSES.USDC,
         swapAmount,
         // ensure we have at least 10% over buyNow to guarantee success and have refund
         minGhstOut,
-        swapDeadline: nowTs() + 3600,
+        swapDeadline,
         recipient: await bidder.getAddress(),
         auctionID: AUCTION_ID,
       };
