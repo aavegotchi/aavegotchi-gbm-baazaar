@@ -38,6 +38,8 @@ export async function upgradeAddSwapFns() {
     "function getAuctionBidMultiplier(uint256) public view returns (uint64)",
     "function getBuyItNowInvalidationThreshold() external view returns (uint256)",
     "function isBiddingAllowed(address) public view returns (bool)",
+    // Removed from GBMFacet in this upgrade; ensure the selector is also removed from the diamond.
+    "function getAllUnclaimedAuctions() public view returns (uint256[])",
   ];
 
   const extendedFacetAdds: string[] = [
