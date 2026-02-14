@@ -33,6 +33,16 @@ module.exports = {
   networks: {
     hardhat: {
       chainId: 8453,
+      // Base uses Cancun-era EVM rules. Hardhat needs a hardfork activation history for non-mainnet
+      // chainIds when executing against forked historical blocks.
+      hardfork: "cancun",
+      chains: {
+        8453: {
+          hardforkHistory: {
+            cancun: 0,
+          },
+        },
+      },
       forking: {
         url: process.env.BASE_RPC_URL,
       },
