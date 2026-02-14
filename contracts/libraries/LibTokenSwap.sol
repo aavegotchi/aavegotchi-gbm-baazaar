@@ -87,6 +87,9 @@ library LibTokenSwap {
             amountOut = _executeSwap(tokenIn, swapAmount, minGhstOut, deadline, recipient, s.GHST);
         }
 
+        // Clear any leftover allowance to reduce risk if the router doesn't spend the full approved amount.
+        _resetRouterAllowance(tokenIn);
+
         emit TokenSwapped(tokenIn, s.GHST, swapAmount, amountOut, recipient);
     }
 
@@ -105,6 +108,15 @@ library LibTokenSwap {
                 }
                 erc20.approve(ROUTER, swapAmount);
             }
+        }
+    }
+
+    function _resetRouterAllowance(address tokenIn) private {
+        if (tokenIn == address(0)) return;
+        IERC20 erc20 = IERC20(tokenIn);
+        uint256 allowance_ = erc20.allowance(address(this), ROUTER);
+        if (allowance_ > 0) {
+            erc20.approve(ROUTER, 0);
         }
     }
 
