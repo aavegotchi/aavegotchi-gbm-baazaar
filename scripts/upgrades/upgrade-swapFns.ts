@@ -31,10 +31,11 @@ describe("Upgrade: add swap functions and reallocate getters (base mainnet fork)
         tokenContract: ethers.constants.AddressZero,
         _tokenID: 0,
         _amount: 0,
-        _signature: "0x",
+        // Must be 65 bytes to avoid LibSignature "Invalid signature length"
+        _signature: "0x" + "00".repeat(65),
       };
       await expect(gbmFacet.swapAndCommitBid(ctx)).to.be.revertedWith(
-        "Invalid signature"
+        "bid: Invalid signature"
       );
     });
 
@@ -48,7 +49,7 @@ describe("Upgrade: add swap functions and reallocate getters (base mainnet fork)
         auctionID: 0,
       };
       await expect(gbmFacet.swapAndBuyNow(ctx)).to.be.revertedWith(
-        "deadline expired"
+        "LibTokenSwap: deadline expired"
       );
     });
   });
