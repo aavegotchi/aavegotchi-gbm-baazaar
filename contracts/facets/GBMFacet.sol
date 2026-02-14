@@ -12,7 +12,6 @@ import "../interfaces/IERC1155TokenReceiver.sol";
 import "../interfaces/Ownable.sol";
 import "../libraries/AppStorage.sol";
 import "../libraries/LibDiamond.sol";
-import "../libraries/LibSignature.sol";
 
 import "../interfaces/IERC2981.sol";
 import "../interfaces/IMultiRoyalty.sol";
@@ -31,7 +30,7 @@ contract GBMFacet is IGBM, Modifiers {
     /// @param _auctionID The auction you want to bid on
     /// @param _bidAmount The amount of the ERC20 token the bid is made of. They should be withdrawable by this contract.
     /// @param _highestBid The current higest bid. Throw if incorrect.
-    /// @param _signature Signature
+    /// @dev Signature checks are removed; the last parameter is kept for backwards compatibility but ignored.
     function commitBid(
         uint256 _auctionID,
         uint256 _bidAmount,
@@ -39,11 +38,8 @@ contract GBMFacet is IGBM, Modifiers {
         address _tokenContract,
         uint256 _tokenID,
         uint256 _amount,
-        bytes memory _signature
+        bytes calldata
     ) external {
-        bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, _auctionID, _bidAmount, _highestBid));
-        require(LibSignature.isValid(messageHash, _signature, s.backendPubKey), "bid: Invalid signature");
-
         bid(_auctionID, _tokenContract, _tokenID, _amount, _bidAmount, _highestBid);
     }
 
@@ -63,8 +59,6 @@ contract GBMFacet is IGBM, Modifiers {
     }
 
     function swapAndCommitBid(SwapBidCtx memory ctx) external payable {
-        bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, ctx.auctionID, ctx.bidAmount, ctx.highestBid));
-        require(LibSignature.isValid(messageHash, ctx._signature, s.backendPubKey), "bid: Invalid signature");
         //validate swap params
         LibTokenSwap.validateSwapParams(ctx.tokenIn, ctx.swapAmount, ctx.minGhstOut, ctx.swapDeadline);
         require(ctx.recipient != address(0), "GBM: recipient cannot be 0 address");

@@ -11,7 +11,6 @@ import "../interfaces/IERC1155TokenReceiver.sol";
 import "../interfaces/Ownable.sol";
 import "../libraries/AppStorage.sol";
 import "../libraries/LibDiamond.sol";
-import "../libraries/LibSignature.sol";
 
 import "../interfaces/IERC2981.sol";
 import "../interfaces/IMultiRoyalty.sol";

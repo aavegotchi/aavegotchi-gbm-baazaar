@@ -18,7 +18,7 @@ describe("Upgrade: add swap functions and reallocate getters (base mainnet fork)
   });
 
   describe("edge cases for swap parameter validation", function () {
-    it("reverts on invalid signature in swapAndCommitBid", async function () {
+    it("reverts on ETH amount mismatch in swapAndCommitBid", async function () {
       const ctx = {
         tokenIn: ethers.constants.AddressZero,
         swapAmount: 1,
@@ -34,7 +34,7 @@ describe("Upgrade: add swap functions and reallocate getters (base mainnet fork)
         _signature: "0x",
       };
       await expect(gbmFacet.swapAndCommitBid(ctx)).to.be.revertedWith(
-        "Invalid signature"
+        "LibTokenSwap: ETH amount mismatch"
       );
     });
 
@@ -48,7 +48,7 @@ describe("Upgrade: add swap functions and reallocate getters (base mainnet fork)
         auctionID: 0,
       };
       await expect(gbmFacet.swapAndBuyNow(ctx)).to.be.revertedWith(
-        "deadline expired"
+        "LibTokenSwap: deadline expired"
       );
     });
   });
