@@ -40,6 +40,10 @@ task(
   //   json = JSON.parse(json);
   //   abi.push(...json.abi);
   // }
+  //create the folder if it doesn't exist
+  if (!fs.existsSync("./diamondABI")) {
+    fs.mkdirSync("./diamondABI");
+  }
   abi = JSON.stringify(abi);
   fs.writeFileSync("./diamondABI/diamond.json", abi);
   console.log("ABI written to diamondABI/diamond.json");

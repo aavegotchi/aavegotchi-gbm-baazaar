@@ -12,7 +12,8 @@ dotenv.config({ path: __dirname + "/.env" });
 require("./tasks/generateDiamondABI.js");
 // require("./tasks/verifyFacet.js");
 // require("./tasks/massRegisterERC721.ts");
-// require("./tasks/deployUpgrade");
+require("./tasks/deployUpgrade");
+require("hardhat-tracer");
 // require("./tasks/transferOwnership");
 
 // You have to export an object to set up your config
@@ -31,12 +32,9 @@ module.exports = {
   },
   networks: {
     hardhat: {
+      chainId: 8453,
       forking: {
-        url: process.env.MATIC_URL,
-        accounts: [process.env.SECRET],
-        // timeout: 1200000,
-        // blockNumber: 26200790,
-        // blockNumber: 13024371
+        url: process.env.BASE_RPC_URL,
       },
       blockGasLimit: 200000000,
       timeout: 120000,
