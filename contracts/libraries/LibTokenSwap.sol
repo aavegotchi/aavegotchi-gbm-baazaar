@@ -94,16 +94,19 @@ library LibTokenSwap {
         if (tokenIn != address(0)) {
             // For ERC20, transfer tokens from sender to this contract first
             IERC20 erc20 = IERC20(tokenIn);
-            erc20.transferFrom(msg.sender, address(this), swapAmount);
-            // Verify we received the tokens
-            require(erc20.balanceOf(address(this)) >= swapAmount, "LibTokenSwap: Token transfer failed");
+            uint256 balBefore = erc20.balanceOf(address(this));
+            _safeTransferFrom(erc20, msg.sender, address(this), swapAmount);
+            uint256 balAfter = erc20.balanceOf(address(this));
+            // Verify we received *exactly* swapAmount, preventing draining any pre-existing contract balance.
+            require(balAfter >= balBefore, "LibTokenSwap: Token transfer failed");
+            require(balAfter - balBefore == swapAmount, "LibTokenSwap: Token transfer failed");
             // Approve zRouter to spend our tokens; some tokens require setting to 0 before updating
             uint256 currentAllowance = erc20.allowance(address(this), ROUTER);
             if (currentAllowance < swapAmount) {
                 if (currentAllowance > 0) {
-                    erc20.approve(ROUTER, 0);
+                    _safeApprove(erc20, ROUTER, 0);
                 }
-                erc20.approve(ROUTER, swapAmount);
+                _safeApprove(erc20, ROUTER, swapAmount);
             }
         }
     }
@@ -219,8 +222,27 @@ library LibTokenSwap {
 
         if (ghstReceived > ghstNeeded) {
             uint256 excess = ghstReceived - ghstNeeded;
-            IERC20(s.GHST).transfer(recipient, excess);
+            _safeTransfer(IERC20(s.GHST), recipient, excess);
         }
+    }
+
+    function _safeTransferFrom(IERC20 token, address from, address to, uint256 value) private {
+        (bool success, bytes memory returndata) = address(token).call(
+            abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value)
+        );
+        require(success && (returndata.length == 0 || abi.decode(returndata, (bool))), "LibTokenSwap: transferFrom failed");
+    }
+
+    function _safeTransfer(IERC20 token, address to, uint256 value) private {
+        (bool success, bytes memory returndata) = address(token).call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
+        require(success && (returndata.length == 0 || abi.decode(returndata, (bool))), "LibTokenSwap: transfer failed");
+    }
+
+    function _safeApprove(IERC20 token, address spender, uint256 value) private {
+        (bool success, bytes memory returndata) = address(token).call(
+            abi.encodeWithSelector(IERC20.approve.selector, spender, value)
+        );
+        require(success && (returndata.length == 0 || abi.decode(returndata, (bool))), "LibTokenSwap: approve failed");
     }
 
     function appStorage() internal pure returns (AppStorage storage a) {
