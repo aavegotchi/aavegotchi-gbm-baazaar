@@ -22,13 +22,11 @@ require("hardhat-tracer");
 // Go to https://buidler.dev/config/ to learn more
 module.exports = {
   etherscan: {
-    apiKey: {
-      // matic: process.env.POLYGON_API_KEY,
-      // polter: "empty",
-      // geist: "empty",
-      baseSepolia: process.env.BASE_API_KEY,
-      base: process.env.BASE_API_KEY,
-    },
+    // Etherscan API v2 uses a single API key across supported networks.
+    apiKey:
+      process.env.ETHERSCAN_API_KEY ||
+      process.env.BASE_API_KEY ||
+      process.env.POLYGON_API_KEY,
   },
   networks: {
     hardhat: {
