@@ -81,6 +81,7 @@ export async function upgradeAddSwapFns() {
 
   const c = await varsForNetwork(ethers);
   const owner = await diamondOwner(c.gbmDiamond!, ethers);
+
   let iface: GBMFacetInterface = new ethers.utils.Interface(
     GBMFacet__factory.abi
   ) as GBMFacetInterface;
@@ -94,11 +95,11 @@ export async function upgradeAddSwapFns() {
     diamondOwner: owner,
     diamondAddress: c.gbmDiamond!,
     facetsAndAddSelectors: joined,
-    useLedger: true,
+    useLedger: false,
     useMultisig: false,
     initAddress: c.gbmDiamond!,
     initCalldata: calldata,
-    useRelayer: false,
+    useRelayer: true,
   };
 
   await run("deployUpgrade", args);
