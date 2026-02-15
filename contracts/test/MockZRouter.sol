@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/IERC20.sol";
 
-/// @notice Minimal zRouter mock used for LibTokenSwap tests.
+/// @notice Minimal zRouter mock used for LibTokenSwap/GBM swap tests.
 /// @dev Treats `amountLimit` as the output amount to send to `to`.
 contract MockZRouter {
     function swapAero(
@@ -54,4 +54,3 @@ contract MockZRouter {
         return (swapAmount, amountOut);
     }
 }
-

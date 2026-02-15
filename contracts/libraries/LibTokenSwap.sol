@@ -119,7 +119,7 @@ library LibTokenSwap {
         IERC20 erc20 = IERC20(tokenIn);
         uint256 allowance_ = erc20.allowance(address(this), ROUTER);
         if (allowance_ > 0) {
-            erc20.approve(ROUTER, 0);
+            _safeApprove(erc20, ROUTER, 0);
         }
     }
 

@@ -67,11 +67,18 @@ contract GBMFacet is IGBM, Modifiers {
 
         require(ctx.minGhstOut >= ctx.bidAmount, "GBM: minGhstOut must cover total bid amount");
 
+        // Lock the auction to prevent re-entrancy into buyNow/bid paths while we call into
+        // arbitrary ERC20 token contracts + external routers.
+        a.biddingAllowed = false;
+
         //execute swap
         uint256 ghstReceived = LibTokenSwap.swapForGHST(ctx.tokenIn, ctx.swapAmount, ctx.minGhstOut, ctx.swapDeadline, address(this));
 
         //make sure we received enough ghst
         require(ghstReceived >= ctx.bidAmount, "GBM: Insufficient ghst received");
+
+        // Unlock after external calls complete
+        a.biddingAllowed = true;
 
         _settleBid(ctx.auctionID, ctx.bidAmount, a);
 
@@ -109,12 +116,12 @@ contract GBMFacet is IGBM, Modifiers {
         uint256 duePay = a.dueIncentives;
         address previousHighestBidder = a.highestBidder;
 
+        // Prevent re-entrancy during external calls (token transfer/approve + router swap)
+        a.claimed = true;
+
         // perform swap
         uint256 ghstReceived = LibTokenSwap.swapForGHST(ctx.tokenIn, ctx.swapAmount, ctx.minGhstOut, ctx.swapDeadline, address(this));
         require(ghstReceived >= ae1bnp, "GBM: Insufficient ghst received");
-
-        // Prevent re-entrancy during state change
-        a.claimed = true;
 
         // Refund the highest bidder if any
         if (previousHighestBid > 0) {
